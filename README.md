@@ -5,6 +5,11 @@
 无需安装依赖，无需构建，下载单个 HTML 文件后双击即可使用。
 
 > 公式渲染使用 jsDelivr 上的 KaTeX CDN，首次打开时需要联网加载。断网时页面仍可正常使用，公式会退化为原始 LaTeX 文本。
+>
+> <img width="1912" height="914" alt="readmep1" src="https://github.com/user-attachments/assets/4af9caca-4c66-420c-93e2-6e9c53ec68a4" />
+<img width="1912" height="914" alt="readmep2" src="https://github.com/user-attachments/assets/8cfd70a1-d239-42b1-867f-c0717bfbc2d4" />
+
+
 
 ## ✨ 功能特点
 
