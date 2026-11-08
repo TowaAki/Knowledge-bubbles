@@ -1014,6 +1014,31 @@
     letter-spacing: .01em;
   }
 
+  .detail-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
+  .btn-edit {
+    height: 36px;
+    padding: 0 13px;
+    border: 1px solid rgba(56, 189, 248, .24);
+    border-radius: 10px;
+    color: #0369A1;
+    background: #EFF9FF;
+    font-size: 11.5px;
+  }
+
+  .btn-edit:hover {
+    color: #075985;
+    background: #E0F2FE;
+    border-color: rgba(56, 189, 248, .42);
+    transform: translateY(-1px);
+  }
+
   .btn-danger {
     height: 36px;
     padding: 0 13px;
@@ -1680,7 +1705,8 @@
     #detailTitle { font-size: clamp(32px, 11vw, 44px); }
     .detail-footer { padding: 11px 18px; }
     .detail-footnote { display: none; }
-    .btn-danger { margin-left: auto; }
+    .detail-actions { width: 100%; justify-content: flex-end; }
+    .btn-danger { margin-left: 0; }
 
     .form-card,
     .import-card { padding: 21px 18px; border-radius: 20px; }
@@ -1809,10 +1835,16 @@
       </div>
       <footer class="detail-footer">
         <span class="detail-footnote">内容仅保存在本机浏览器</span>
-        <button class="btn btn-danger" id="deleteEntryBtn" type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="m6 7 1 12h10l1-12"/><path d="M9 7V4h6v3"/></svg>
-          删除该词条
-        </button>
+        <div class="detail-actions">
+          <button class="btn btn-edit" id="editEntryBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+            编辑该词条
+          </button>
+          <button class="btn btn-danger" id="deleteEntryBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="m6 7 1 12h10l1-12"/><path d="M9 7V4h6v3"/></svg>
+            删除该词条
+          </button>
+        </div>
       </footer>
     </article>
   </div>
@@ -1821,9 +1853,9 @@
   <div class="modal-layer" id="formModal" aria-hidden="true">
     <section class="modal-card form-card" role="dialog" aria-modal="true" aria-labelledby="formTitle">
       <div class="form-head">
-        <div class="form-mark" aria-hidden="true">+</div>
+        <div class="form-mark" id="formMark" aria-hidden="true">+</div>
         <div>
-          <p class="eyebrow">NEW BUBBLE</p>
+          <p class="eyebrow" id="formEyebrow">NEW BUBBLE</p>
           <h2 id="formTitle">添加新词</h2>
         </div>
         <button class="icon-x" id="formClose" type="button" aria-label="关闭添加表单">
@@ -1868,14 +1900,14 @@
           <span class="swatches" aria-hidden="true">
             <i style="background:#BAE6FD"></i><i style="background:#A7F3D0"></i><i style="background:#FEF08A"></i><i style="background:#FBCFE8"></i><i style="background:#DDD6FE"></i>
           </span>
-          气泡颜色将从马卡龙色板中自动分配
+          <span id="colorNoteText">气泡颜色将从马卡龙色板中自动分配</span>
         </div>
 
         <div class="form-actions">
           <button class="btn btn-cancel" id="formCancel" type="button">取消</button>
           <button class="btn btn-save" type="submit">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
-            保存并生成气泡
+            <span id="formSubmitLabel">保存并生成气泡</span>
           </button>
         </div>
       </form>
@@ -1988,10 +2020,16 @@
       detailRule: $('#detailRule'),
       detailDesc: $('#detailDesc'),
       detailClose: $('#detailClose'),
+      editEntryBtn: $('#editEntryBtn'),
       deleteEntryBtn: $('#deleteEntryBtn'),
 
       formModal: $('#formModal'),
       formClose: $('#formClose'),
+      formMark: $('#formMark'),
+      formEyebrow: $('#formEyebrow'),
+      formTitle: $('#formTitle'),
+      formSubmitLabel: $('#formSubmitLabel'),
+      colorNoteText: $('#colorNoteText'),
       addForm: $('#addForm'),
       formCancel: $('#formCancel'),
       nameInput: $('#nameInput'),
@@ -2027,6 +2065,7 @@
     const bubbleElements = new Map();
     let query = '';
     let currentDetailId = null;
+    let editingEntryId = null;
     let pendingImport = null;
     let pendingDeleteId = null;
     let modalStack = [];
@@ -2433,8 +2472,11 @@
       const desc = typeof raw.desc === 'string' ? raw.desc.replace(/\r\n?/g, '\n').slice(0, 12000) : '';
       const imageUrl = sanitizeImageUrl(raw.imageUrl);
       const color = normalizeColor(raw.color);
+      const sizeBasis = normalizeName(raw.sizeBasis);
 
-      return { id, name, desc, imageUrl, color };
+      const entry = { id, name, desc, imageUrl, color };
+      if (sizeBasis && sizeBasis !== name) entry.sizeBasis = sizeBasis;
+      return entry;
     }
 
     function normalizeEntries(list) {
@@ -2553,9 +2595,10 @@
     /* ============================================================
        气泡模型
        ============================================================ */
-    function computeRadius(name, id) {
+    function computeRadius(name, id, sizeBasis) {
       const width = view.w || window.innerWidth;
-      const chars = Array.from(name || '').length;
+      const basis = sizeBasis || name;
+      const chars = Array.from(basis || '').length;
       const viewportScale = width < 480 ? 0.72 : width < 700 ? 0.80 : width < 1060 ? 0.90 : 1;
       const base = 54 + Math.min(chars, 14) * 4.2;
       const jitter = 0.94 + (hashString(id) % 13) / 100;
@@ -2757,7 +2800,7 @@
     }
 
     function makeBubble(entry, existing, initialIndex, initial, initialTotal) {
-      const radius = computeRadius(entry.name, entry.id);
+      const radius = computeRadius(entry.name, entry.id, entry.sizeBasis);
       const pos = spawnPosition(radius, existing || [], initial ? initialIndex : -1, initial ? initialTotal : 0);
       const phase = (hashString(entry.id) % 1000) / 1000 * Math.PI * 2;
       const bubble = {
@@ -2799,11 +2842,12 @@
       entries.forEach((entry, index) => {
         const old = oldMap.get(entry.id);
         if (old) {
-          const radius = computeRadius(entry.name, entry.id);
+          const radius = computeRadius(entry.name, entry.id, entry.sizeBasis);
           old.name = entry.name;
           old.desc = entry.desc;
           old.imageUrl = entry.imageUrl;
           old.color = entry.color;
+          old.sizeBasis = entry.sizeBasis;
           if (old.r !== radius) {
             old.r = radius;
             old.gradient = null;
@@ -3256,7 +3300,7 @@
           bubble.x = nextBounds.left + relativeX * nextWidth;
           bubble.y = nextBounds.top + relativeY * nextHeight;
         }
-        bubble.r = computeRadius(bubble.name, bubble.id);
+        bubble.r = computeRadius(bubble.name, bubble.id, bubble.sizeBasis);
         bubble.gradient = null;
         layoutBubbleText(bubble);
         clampBubble(bubble);
@@ -3363,6 +3407,7 @@
       if (!modalStack.length) document.body.classList.remove('modal-open');
 
       if (modal === el.detailModal) currentDetailId = null;
+      if (modal === el.formModal) editingEntryId = null;
       if (modal === el.importModal) {
         pendingImport = null;
         el.importPreview.replaceChildren();
@@ -3396,12 +3441,8 @@
     /* ============================================================
        详情
        ============================================================ */
-    function openDetail(id) {
-      const entry = entries.find((item) => item.id === id);
-      if (!entry) return;
-
-      currentDetailId = id;
-      const index = entries.findIndex((item) => item.id === id);
+    function renderDetail(entry) {
+      const index = entries.findIndex((item) => item.id === entry.id);
       const total = String(entries.length).padStart(2, '0');
 
       el.detailTitle.textContent = entry.name;
@@ -3432,8 +3473,21 @@
         el.detailImage.src = entry.imageUrl;
       }
       el.detailImage.alt = entry.name + ' 配图';
+    }
 
+    function openDetail(id) {
+      const entry = entries.find((item) => item.id === id);
+      if (!entry) return;
+
+      currentDetailId = id;
+      renderDetail(entry);
       openModal(el.detailModal, el.detailClose);
+    }
+
+    function refreshDetail() {
+      if (!currentDetailId) return;
+      const entry = entries.find((item) => item.id === currentDetailId);
+      if (entry) renderDetail(entry);
     }
 
     function requestDelete() {
@@ -3499,10 +3553,41 @@
       setFieldError(el.imageInput, el.imageError, '');
     }
 
+    function setFormMode(mode, entry) {
+      const isEdit = mode === 'edit' && Boolean(entry);
+      editingEntryId = isEdit ? entry.id : null;
+
+      el.formMark.textContent = isEdit ? '✎' : '+';
+      el.formEyebrow.textContent = isEdit ? 'EDIT BUBBLE' : 'NEW BUBBLE';
+      el.formTitle.textContent = isEdit ? '编辑词条' : '添加新词';
+      el.formSubmitLabel.textContent = isEdit ? '保存修改' : '保存并生成气泡';
+      el.formClose.setAttribute('aria-label', isEdit ? '关闭编辑表单' : '关闭添加表单');
+      el.colorNoteText.textContent = isEdit
+        ? '编辑时保留气泡原有的颜色和大小'
+        : '气泡颜色将从马卡龙色板中自动分配';
+    }
+
     function openAddForm() {
       el.addForm.reset();
       clearFormErrors();
+      setFormMode('add');
       el.nameCount.textContent = '0 / 40';
+      el.descInput.classList.remove('invalid');
+      openModal(el.formModal, el.nameInput);
+    }
+
+    function openEditForm() {
+      if (!currentDetailId) return;
+      const entry = entries.find((item) => item.id === currentDetailId);
+      if (!entry) return;
+
+      el.addForm.reset();
+      clearFormErrors();
+      setFormMode('edit', entry);
+      el.nameInput.value = entry.name;
+      el.descInput.value = entry.desc;
+      el.imageInput.value = entry.imageUrl;
+      el.nameCount.textContent = Array.from(entry.name).length + ' / 40';
       el.descInput.classList.remove('invalid');
       openModal(el.formModal, el.nameInput);
     }
@@ -3511,6 +3596,7 @@
       event.preventDefault();
       clearFormErrors();
 
+      const editingId = editingEntryId;
       const name = normalizeName(el.nameInput.value);
       const desc = el.descInput.value.trim().slice(0, 12000);
       const imageUrl = el.imageInput.value.trim();
@@ -3521,7 +3607,7 @@
         return;
       }
 
-      if (entries.some((entry) => nameKey(entry.name) === nameKey(name))) {
+      if (entries.some((entry) => entry.id !== editingId && nameKey(entry.name) === nameKey(name))) {
         setFieldError(el.nameInput, el.nameError, '知识库里已经有这个名词了。');
         el.nameInput.focus();
         return;
@@ -3530,6 +3616,35 @@
       if (imageUrl && !isNetworkUrl(imageUrl)) {
         setFieldError(el.imageInput, el.imageError, '请填写以 http:// 或 https:// 开头的网络图片链接。');
         el.imageInput.focus();
+        return;
+      }
+
+      if (editingId) {
+        const entry = entries.find((item) => item.id === editingId);
+        if (!entry) {
+          closeModal(el.formModal);
+          return;
+        }
+
+        const currentBubble = bubbles.find((bubble) => bubble.id === editingId);
+        if (!entry.sizeBasis) {
+          entry.sizeBasis = currentBubble ? currentBubble.name : entry.name;
+        }
+
+        // 颜色保持不变；sizeBasis 保证改名后气泡大小不变。
+        entry.name = name;
+        entry.desc = desc;
+        entry.imageUrl = sanitizeImageUrl(imageUrl);
+
+        const saved = persist();
+        closeModal(el.formModal);
+        rebuildBubbles();
+        refreshDetail();
+
+        showToast(
+          saved ? '已更新「' + name + '」' : '已更新「' + name + '」，但本地保存失败',
+          saved ? 'success' : 'error'
+        );
         return;
       }
 
@@ -3787,6 +3902,7 @@
       });
 
       el.detailClose.addEventListener('click', () => closeModal(el.detailModal));
+      el.editEntryBtn.addEventListener('click', openEditForm);
       el.deleteEntryBtn.addEventListener('click', requestDelete);
 
       el.formClose.addEventListener('click', () => closeModal(el.formModal));
