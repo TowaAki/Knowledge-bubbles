@@ -6,6 +6,10 @@
 <meta name="theme-color" content="#E0F2FE">
 <meta name="description" content="知识气泡（Knowledge Bubbles）——一个基于纯前端、无需后端的可视化名词知识库。">
 <title>知识气泡 · Knowledge Bubbles</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 <style>
   /* ============ 基础 ============ */
   *, *::before, *::after { box-sizing: border-box; }
@@ -75,63 +79,92 @@
     outline-offset: 3px;
   }
 
-  /* ============ 环境光 ============ */
-  .aurora {
+  /* ============ 可切换背景 ============ */
+  body::before,
+  body::after { content: none; display: none; }
+
+  .background-stack {
     position: fixed;
-    inset: -15%;
+    inset: 0;
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
-    filter: blur(90px);
-    opacity: .38;
-  }
-
-  .aurora span {
-    position: absolute;
-    display: block;
-    width: 40vw;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    will-change: transform;
-  }
-
-  .aurora .orb-a {
-    left: -4%;
-    top: 4%;
-    background: #BAE6FD;
-    animation: driftA 26s ease-in-out infinite alternate;
-  }
-
-  .aurora .orb-b {
-    right: -2%;
-    top: 8%;
-    background: #DBEAFE;
-    opacity: .78;
-    animation: driftB 31s ease-in-out infinite alternate;
-  }
-
-  .aurora .orb-c {
-    left: 36%;
-    bottom: -20%;
     background: #E0F2FE;
-    opacity: .62;
-    animation: driftC 35s ease-in-out infinite alternate;
   }
 
-  @keyframes driftA {
-    from { transform: translate3d(0, 0, 0) scale(1); }
-    to   { transform: translate3d(9vw, 8vh, 0) scale(1.12); }
+  .bg-layer {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    transition: opacity .55s ease;
   }
 
-  @keyframes driftB {
-    from { transform: translate3d(0, 0, 0) scale(1.08); }
-    to   { transform: translate3d(-10vw, 12vh, 0) scale(.94); }
+  .bg-layer.is-active {
+    opacity: 1;
+    z-index: 2;
   }
 
-  @keyframes driftC {
-    from { transform: translate3d(0, 0, 0) scale(.96); }
-    to   { transform: translate3d(8vw, -9vh, 0) scale(1.14); }
+  .bg-layer.bg-blue {
+    background:
+      radial-gradient(62% 58% at 8% 4%, rgba(255, 255, 255, .78), transparent 66%),
+      radial-gradient(52% 50% at 92% 12%, rgba(219, 234, 254, .55), transparent 70%),
+      radial-gradient(54% 46% at 76% 96%, rgba(186, 230, 253, .28), transparent 72%),
+      linear-gradient(135deg, #E0F2FE 0%, #F4FAFF 48%, #FFFFFF 100%);
   }
+
+  .bg-layer.bg-white {
+    background:
+      radial-gradient(56% 54% at 18% 8%, rgba(224, 242, 254, .34), transparent 68%),
+      radial-gradient(50% 50% at 86% 88%, rgba(241, 245, 249, .65), transparent 72%),
+      linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+  }
+
+  .bg-layer.bg-dark {
+    background:
+      radial-gradient(2px 2px at 12% 78%, rgba(255, 255, 255, .92), transparent 60%),
+      radial-gradient(1.8px 1.8px at 58% 12%, rgba(255, 255, 255, .86), transparent 60%),
+      radial-gradient(2.2px 2.2px at 86% 58%, rgba(255, 255, 255, .8), transparent 60%),
+      radial-gradient(1.7px 1.7px at 36% 52%, rgba(191, 219, 254, .9), transparent 60%),
+      radial-gradient(1.4px 1.4px at 8% 14%, rgba(255, 255, 255, .85), transparent 60%),
+      radial-gradient(1px 1px at 17% 32%, rgba(191, 219, 254, .7), transparent 60%),
+      radial-gradient(1.6px 1.6px at 24% 74%, rgba(255, 255, 255, .55), transparent 60%),
+      radial-gradient(1px 1px at 33% 18%, rgba(255, 255, 255, .62), transparent 60%),
+      radial-gradient(1.2px 1.2px at 42% 57%, rgba(186, 230, 253, .65), transparent 60%),
+      radial-gradient(1.4px 1.4px at 53% 26%, rgba(255, 255, 255, .72), transparent 60%),
+      radial-gradient(1px 1px at 61% 78%, rgba(255, 255, 255, .48), transparent 60%),
+      radial-gradient(1.7px 1.7px at 69% 46%, rgba(221, 214, 254, .62), transparent 60%),
+      radial-gradient(1px 1px at 78% 16%, rgba(255, 255, 255, .52), transparent 60%),
+      radial-gradient(1.3px 1.3px at 86% 68%, rgba(255, 255, 255, .74), transparent 60%),
+      radial-gradient(1px 1px at 93% 36%, rgba(125, 211, 252, .65), transparent 60%),
+      radial-gradient(50% 46% at 82% 16%, rgba(56, 189, 248, .13), transparent 66%),
+      radial-gradient(48% 46% at 16% 86%, rgba(129, 140, 248, .12), transparent 68%),
+      linear-gradient(155deg, #060B16 0%, #0F172A 54%, #111C33 100%);
+  }
+
+  .bg-image {
+    background-color: #0F172A;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .bg-grain {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    opacity: .12;
+    background-image: radial-gradient(rgba(37, 99, 235, .5) 1px, transparent 1.1px);
+    background-size: 30px 30px;
+    -webkit-mask-image: radial-gradient(ellipse 78% 72% at 50% 48%, #000 12%, transparent 78%);
+    mask-image: radial-gradient(ellipse 78% 72% at 50% 48%, #000 12%, transparent 78%);
+    transition: opacity .4s ease;
+  }
+
+  body.has-dark-bg .bg-grain { opacity: .04; }
+  body.has-photo-bg .bg-grain { opacity: .05; }
 
   /* ============ 舞台 ============ */
   .stage {
@@ -209,7 +242,9 @@
     transition:
       transform .22s cubic-bezier(.22, 1, .36, 1),
       box-shadow .22s ease,
-      border-color .22s ease;
+      border-color .22s ease,
+      backdrop-filter .25s ease,
+      -webkit-backdrop-filter .25s ease;
   }
 
   .bubble-core::after {
@@ -275,6 +310,133 @@
     display: block;
     white-space: nowrap;
   }
+
+  /* 扁平极简气泡 */
+  body.bubble-style-flat .bubble-core {
+    border-color: transparent;
+    background: rgba(var(--bubble-rgb), .92);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, .08);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  body.bubble-style-flat .bubble-core::after { display: none; }
+
+  body.bubble-style-flat .bubble:hover .bubble-core,
+  body.bubble-style-flat .bubble:focus-visible .bubble-core {
+    border-color: transparent;
+    box-shadow: 0 9px 22px rgba(15, 23, 42, .13);
+  }
+
+  body.bubble-style-flat .bubble.is-match .bubble-core {
+    border-color: transparent;
+    box-shadow:
+      0 0 0 5px rgba(255, 255, 255, .62),
+      0 0 26px rgba(14, 165, 233, .30),
+      0 8px 20px rgba(15, 23, 42, .12);
+  }
+
+  /* 拟物肥皂泡 */
+  body.bubble-style-soap .bubble-core {
+    border: 1.5px solid rgba(255, 255, 255, .58);
+    background:
+      radial-gradient(circle at 31% 25%, rgba(255, 255, 255, .18), transparent 31%),
+      radial-gradient(circle at 50% 50%,
+        rgba(var(--bubble-rgb), .16) 0 42%,
+        rgba(var(--bubble-rgb), .05) 64%,
+        rgba(255, 255, 255, .45) 88%,
+        rgba(255, 255, 255, .82) 100%);
+    box-shadow:
+      inset 0 0 24px rgba(255, 255, 255, .44),
+      inset 0 1px 0 rgba(255, 255, 255, .92),
+      0 8px 24px var(--bubble-shadow);
+    -webkit-backdrop-filter: blur(3px) saturate(1.12);
+    backdrop-filter: blur(3px) saturate(1.12);
+  }
+
+  body.bubble-style-soap .bubble-core::after {
+    content: "";
+    inset: 0;
+    left: 0;
+    top: 0;
+    width: auto;
+    height: auto;
+    border-radius: 50%;
+    transform: none;
+    filter: blur(.3px);
+    background:
+      radial-gradient(circle at 24% 27%, rgba(255, 255, 255, .95) 0 2px, transparent 3.2px),
+      radial-gradient(circle at 67% 18%, rgba(255, 255, 255, .82) 0 1.5px, transparent 2.7px),
+      radial-gradient(circle at 76% 70%, rgba(255, 255, 255, .78) 0 2.4px, transparent 3.8px),
+      radial-gradient(circle at 37% 78%, rgba(255, 255, 255, .62) 0 1.2px, transparent 2.4px);
+  }
+
+  body.bubble-style-soap .bubble:hover .bubble-core,
+  body.bubble-style-soap .bubble:focus-visible .bubble-core {
+    border-color: rgba(255, 255, 255, .84);
+    box-shadow:
+      inset 0 0 28px rgba(255, 255, 255, .58),
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 14px 30px var(--bubble-shadow-hover);
+  }
+
+  body.bubble-style-soap .bubble.is-match .bubble-core {
+    border-color: rgba(255, 255, 255, .95);
+    box-shadow:
+      inset 0 0 26px rgba(255, 255, 255, .62),
+      0 0 0 6px rgba(255, 255, 255, .38),
+      0 0 30px rgba(14, 165, 233, .28),
+      0 14px 30px var(--bubble-shadow-hover);
+  }
+
+  body.bubble-style-soap .bubble-text {
+    text-shadow: 0 0 4px #fff, 0 0 10px rgba(255, 255, 255, .86);
+  }
+
+  /* 深色或图片背景下增加气泡不透明度，保证深色文字可读 */
+  body.has-dark-bg .bubble-style-glass .bubble-core,
+  body.has-photo-bg .bubble-style-glass .bubble-core {
+    background:
+      radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .56), transparent 23%),
+      linear-gradient(145deg, rgba(var(--bubble-rgb), .72), rgba(var(--bubble-rgb), .88));
+  }
+
+  body.has-dark-bg .bubble-style-soap .bubble-core,
+  body.has-photo-bg .bubble-style-soap .bubble-core {
+    background:
+      radial-gradient(circle at 31% 25%, rgba(255, 255, 255, .22), transparent 31%),
+      radial-gradient(circle at 50% 50%,
+        rgba(var(--bubble-rgb), .34) 0 42%,
+        rgba(var(--bubble-rgb), .13) 64%,
+        rgba(255, 255, 255, .60) 88%,
+        rgba(255, 255, 255, .90) 100%);
+  }
+
+  body.has-dark-bg .bubble-text,
+  body.has-photo-bg .bubble-text {
+    text-shadow: 0 0 5px #fff, 0 0 11px rgba(255, 255, 255, .72);
+  }
+
+  body.has-dark-bg .empty-state h2 { color: #F8FAFC; }
+  body.has-dark-bg .empty-state p { color: rgba(226, 232, 240, .72); }
+
+  /* 高密度分页下减少每帧毛玻璃开销，保持动画流畅 */
+  body.is-dense .bubble-style-glass .bubble-core,
+  body.is-dense .bubble-style-soap .bubble-core {
+    -webkit-backdrop-filter: blur(2px) saturate(1.05);
+    backdrop-filter: blur(2px) saturate(1.05);
+  }
+
+  @keyframes bubbleStyleFade {
+    from { opacity: .58; }
+    to { opacity: 1; }
+  }
+
+  body.bubble-style-changing .bubble-core {
+    animation: bubbleStyleFade .34s ease;
+  }
+
+  body.is-focusing .bubble { pointer-events: none; }
 
   .stage-ui {
     position: fixed;
@@ -390,6 +552,59 @@
   }
 
   .stage-hint.is-hidden { transform: translate(-50%, 6px); }
+
+  .pager {
+    right: 24px;
+    bottom: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 34px;
+    padding: 0 6px;
+    border: 1px solid rgba(148, 163, 184, .24);
+    border-radius: 999px;
+    color: #475569;
+    background: rgba(255, 255, 255, .82);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, .06), inset 0 1px 0 rgba(255, 255, 255, .9);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    pointer-events: auto;
+    transition: opacity .25s ease, transform .25s ease, visibility .25s;
+  }
+
+  .pager-btn {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    color: #475569;
+    background: transparent;
+    transition: background .18s ease, color .18s ease, opacity .18s ease;
+  }
+
+  .pager-btn:hover:not(:disabled) {
+    color: #0369A1;
+    background: #E0F2FE;
+  }
+
+  .pager-btn:disabled {
+    opacity: .28;
+    cursor: default;
+  }
+
+  .pager-info {
+    min-width: 40px;
+    padding: 0 4px;
+    color: #475569;
+    font-size: 10.5px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    white-space: nowrap;
+  }
 
   /* ============ 空状态 / 搜索空状态 ============ */
   .empty-state {
@@ -1152,6 +1367,58 @@
 
   .md-empty { color: #94A3B8; font-style: italic; }
 
+  /* ============ KaTeX 公式 ============ */
+  .markdown .katex {
+    font-size: 1.03em;
+    max-width: 100%;
+  }
+
+  .markdown .katex-display {
+    max-width: 100%;
+    margin: 18px 0;
+    padding: 4px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #CBD5E1 transparent;
+  }
+
+  .markdown .katex-display::-webkit-scrollbar { height: 7px; }
+
+  .markdown .katex-display::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #CBD5E1;
+  }
+
+  .markdown .katex-display > .katex {
+    font-size: 1.08em;
+    white-space: normal;
+  }
+
+  .markdown .math-block {
+    max-width: 100%;
+    margin: 18px 0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+  }
+
+  .markdown .math-block .katex-display {
+    margin: 0;
+    white-space: normal;
+  }
+
+  .math-fallback {
+    display: inline;
+    padding: 1px 5px;
+    border-radius: 5px;
+    color: #475569;
+    background: #F1F5F9;
+    font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    font-size: .9em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
   /* ============ 表单卡 ============ */
   #formModal { z-index: 60; }
 
@@ -1234,6 +1501,44 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: .04em;
   }
+
+  .math-tools {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 9px;
+  }
+
+  .math-tools-label {
+    margin-right: 2px;
+    color: #94A3B8;
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: .04em;
+  }
+
+  .math-chip {
+    height: 26px;
+    padding: 0 9px;
+    border: 1px solid #E2E8F0;
+    border-radius: 7px;
+    color: #475569;
+    background: #FFFFFF;
+    font-size: 10.5px;
+    font-weight: 650;
+    line-height: 1;
+    transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease;
+  }
+
+  .math-chip:hover {
+    color: #0369A1;
+    background: #EFF9FF;
+    border-color: #BAE6FD;
+    transform: translateY(-1px);
+  }
+
+  .math-chip:active { transform: scale(.97); }
 
   .field input,
   .field textarea {
@@ -1547,6 +1852,412 @@
 
   .confirm-actions .btn { min-width: 104px; }
 
+  /* ============ 外观设置 ============ */
+  #settingsModal { z-index: 65; }
+
+  .settings-card {
+    display: flex;
+    flex-direction: column;
+    width: min(640px, 100%);
+    max-height: min(90vh, 900px);
+    max-height: min(90dvh, 900px);
+    overflow: hidden;
+    border-radius: 26px;
+  }
+
+  .settings-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+    padding: 23px 26px 17px;
+    border-bottom: 1px solid #EEF2F7;
+  }
+
+  .settings-mark {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    border-radius: 13px;
+    color: #0369A1;
+    background: #E0F2FE;
+    border: 1px solid rgba(56, 189, 248, .18);
+  }
+
+  .settings-head h2 {
+    margin: 3px 0 0;
+    color: #0F172A;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+  }
+
+  .settings-head .icon-x { margin-left: auto; }
+
+  .settings-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 17px 26px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .settings-section {
+    padding: 16px;
+    margin-bottom: 14px;
+    border: 1px solid #E8EEF5;
+    border-radius: 16px;
+    background: #FFFFFF;
+  }
+
+  .settings-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .settings-section h3 {
+    margin: 0;
+    color: #0F172A;
+    font-size: 13px;
+    font-weight: 760;
+    letter-spacing: -.01em;
+  }
+
+  .settings-status {
+    padding: 3px 8px;
+    border-radius: 999px;
+    color: #0369A1;
+    background: #E0F2FE;
+    font-size: 10px;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+
+  .bg-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .bg-preset {
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    background: #FFFFFF;
+    text-align: left;
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+  }
+
+  .bg-preset:hover {
+    transform: translateY(-1px);
+    border-color: #BAE6FD;
+  }
+
+  .bg-preset.is-active {
+    border-color: #38BDF8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, .12);
+  }
+
+  .bg-thumb {
+    display: block;
+    height: 62px;
+    background-size: cover;
+    background-position: center;
+  }
+
+  .thumb-blue {
+    background:
+      radial-gradient(60% 60% at 16% 12%, rgba(255, 255, 255, .9), transparent 65%),
+      linear-gradient(135deg, #BAE6FD, #E0F2FE 50%, #FFFFFF);
+  }
+
+  .thumb-white {
+    background:
+      radial-gradient(60% 60% at 72% 20%, rgba(224, 242, 254, .5), transparent 65%),
+      linear-gradient(180deg, #FFFFFF, #F1F5F9);
+  }
+
+  .thumb-dark {
+    background:
+      radial-gradient(1.5px 1.5px at 20% 28%, rgba(255, 255, 255, .9), transparent 60%),
+      radial-gradient(1px 1px at 42% 64%, rgba(186, 230, 253, .8), transparent 60%),
+      radial-gradient(1.4px 1.4px at 72% 26%, rgba(255, 255, 255, .8), transparent 60%),
+      radial-gradient(1px 1px at 84% 72%, rgba(221, 214, 254, .8), transparent 60%),
+      radial-gradient(50% 50% at 78% 18%, rgba(56, 189, 248, .2), transparent 65%),
+      linear-gradient(155deg, #060B16, #0F172A 55%, #172554);
+  }
+
+  .bg-preset-label {
+    display: block;
+    padding: 7px 9px;
+    color: #475569;
+    font-size: 10.5px;
+    font-weight: 650;
+  }
+
+  .bg-preset.is-active .bg-preset-label { color: #0369A1; }
+
+  .settings-field { margin-top: 14px; }
+
+  .settings-field > label {
+    display: block;
+    margin-bottom: 6px;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .wallpaper-url-row {
+    display: flex;
+    gap: 7px;
+  }
+
+  .wallpaper-url-row input {
+    flex: 1;
+    min-width: 0;
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid #E2E8F0;
+    border-radius: 9px;
+    outline: 0;
+    background: #FFFFFF;
+    color: #1E293B;
+    font-size: 11.5px;
+    transition: border-color .18s ease, box-shadow .18s ease;
+  }
+
+  .wallpaper-url-row input:focus {
+    border-color: #7DD3FC;
+    box-shadow: 0 0 0 3px rgba(125, 211, 252, .16);
+  }
+
+  .wallpaper-url-row input::placeholder { color: #B4C0D0; }
+
+  .btn-apply {
+    height: 38px;
+    padding: 0 14px;
+    color: #FFFFFF;
+    background: #0F172A;
+    font-size: 11.5px;
+    box-shadow: 0 5px 12px rgba(15, 23, 42, .12);
+  }
+
+  .btn-apply:hover {
+    background: #1E293B;
+    transform: translateY(-1px);
+  }
+
+  .settings-hint {
+    margin: 6px 0 0;
+    color: #94A3B8;
+    font-size: 10px;
+    line-height: 1.65;
+  }
+
+  .wallpaper-upload-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .btn-upload {
+    height: 34px;
+    padding: 0 11px;
+    border: 1px solid #BAE6FD;
+    border-radius: 9px;
+    color: #0369A1;
+    background: #EFF9FF;
+    font-size: 11px;
+  }
+
+  .btn-upload:hover {
+    background: #E0F2FE;
+    border-color: #7DD3FC;
+  }
+
+  .btn-upload:disabled { opacity: .55; cursor: wait; }
+
+  .link-button {
+    padding: 4px 2px;
+    border: 0;
+    background: none;
+    color: #94A3B8;
+    font-size: 10.5px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .link-button:hover { color: #DC2626; }
+  .link-button:disabled {
+    opacity: .38;
+    text-decoration: none;
+    cursor: not-allowed;
+    color: #94A3B8;
+  }
+
+  .upload-status {
+    margin-left: auto;
+    color: #94A3B8;
+    font-size: 10px;
+  }
+
+  .bubble-style-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .style-option {
+    padding: 12px 7px 10px;
+    border: 1px solid #E2E8F0;
+    border-radius: 13px;
+    background: #FFFFFF;
+    text-align: center;
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease, background .2s ease;
+  }
+
+  .style-option:hover {
+    transform: translateY(-1px);
+    border-color: #BAE6FD;
+  }
+
+  .style-option.is-active {
+    border-color: #38BDF8;
+    background: #F8FCFF;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, .11);
+  }
+
+  .style-preview {
+    position: relative;
+    display: block;
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 8px;
+    border-radius: 50%;
+  }
+
+  .preview-glass {
+    border: 2px solid rgba(255, 255, 255, .92);
+    background:
+      radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .8), transparent 24%),
+      linear-gradient(145deg, rgba(186, 230, 253, .66), rgba(186, 230, 253, .9));
+    box-shadow: inset 0 0 15px rgba(255, 255, 255, .7), 0 6px 14px rgba(37, 99, 235, .14);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+  }
+
+  .preview-flat {
+    border: 2px solid transparent;
+    background: #BAE6FD;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, .10);
+  }
+
+  .preview-soap {
+    border: 1.5px solid rgba(255, 255, 255, .8);
+    background:
+      radial-gradient(circle at 50% 50%,
+        rgba(186, 230, 253, .16) 0 40%,
+        rgba(255, 255, 255, .35) 70%,
+        rgba(255, 255, 255, .88) 100%);
+    box-shadow: inset 0 0 12px rgba(255, 255, 255, .7);
+  }
+
+  .preview-soap::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 25% 27%, #FFFFFF 0 2px, transparent 3px),
+      radial-gradient(circle at 68% 20%, rgba(255, 255, 255, .9) 0 1.4px, transparent 2.4px),
+      radial-gradient(circle at 73% 70%, rgba(255, 255, 255, .8) 0 2px, transparent 3px);
+  }
+
+  .style-label {
+    display: block;
+    color: #334155;
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+
+  .style-caption {
+    display: block;
+    margin-top: 2px;
+    color: #94A3B8;
+    font-size: 8.5px;
+  }
+
+  .settings-note {
+    margin: 2px 2px 5px;
+    color: #94A3B8;
+    font-size: 10px;
+    line-height: 1.7;
+  }
+
+  .settings-footer {
+    display: flex;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+    padding: 12px 26px 18px;
+    border-top: 1px solid #EEF2F7;
+    background: rgba(255, 255, 255, .72);
+  }
+
+  #messageModal { z-index: 90; }
+
+  .message-card {
+    width: min(430px, 100%);
+    padding: 28px 28px 24px;
+    border-radius: 24px;
+    text-align: center;
+  }
+
+  .message-mark {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    color: #B45309;
+    background: #FEF3C7;
+    border: 1px solid rgba(245, 158, 11, .18);
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .message-card h2 {
+    margin: 0 0 8px;
+    color: #0F172A;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+  }
+
+  .message-card p {
+    margin: 0;
+    color: #64748B;
+    font-size: 12.5px;
+    line-height: 1.8;
+  }
+
+  .message-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  .message-actions .btn { min-width: 110px; }
+
   /* ============ Toast ============ */
   .toast-stack {
     position: fixed;
@@ -1671,6 +2382,7 @@
     .btn-primary .btn-label { display: inline; }
 
     .count-pill { left: 14px; bottom: 14px; }
+    .pager { right: 14px; bottom: 14px; }
     .stage-hint { display: none; }
     .toast-stack { bottom: 62px; }
 
@@ -1694,6 +2406,9 @@
     .search-kbd { display: none; }
 
     .count-pill { height: 30px; padding: 0 11px; font-size: 10.5px; }
+    .pager { height: 30px; padding: 0 4px; }
+    .pager-btn { width: 22px; height: 22px; }
+    .pager-info { min-width: 37px; font-size: 10px; }
     .stage-hint { display: none; }
 
     .modal-layer { padding: 10px; }
@@ -1718,13 +2433,32 @@
     .import-actions .btn { flex: 1 1 auto; }
     .confirm-card { padding: 24px 20px 21px; border-radius: 20px; }
 
+    .settings-card { border-radius: 20px; max-height: 94dvh; }
+    .settings-head { padding: 20px 18px 14px; }
+    .settings-scroll { padding: 13px 14px; }
+    .settings-section { padding: 13px; }
+    .settings-footer { padding: 11px 16px 15px; }
+    .bg-thumb { height: 50px; }
+    .style-preview { width: 44px; height: 44px; }
+    .wallpaper-url-row { flex-wrap: wrap; }
+    .wallpaper-url-row input { flex: 1 0 100%; }
+    .wallpaper-url-row .btn-apply { flex: 1 0 auto; }
+    .upload-status { width: 100%; margin-left: 0; }
+    .message-card { padding: 24px 20px 21px; border-radius: 20px; }
+
     .empty-state { inset: 112px 0 50px; }
     .empty-visual { width: 104px; height: 104px; margin-bottom: 20px; }
   }
 
+  @media (max-width: 400px) {
+    .btn-primary .btn-label { display: none; }
+    .actions { gap: 5px; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .aurora span,
     .count-pill .status-dot { animation: none; }
+    body.bubble-style-changing .bubble-core { animation: none; }
+    .bg-layer,
     .detail-cover img,
     .modal-card,
     .toast,
@@ -1734,10 +2468,10 @@
 </style>
 </head>
 <body>
-  <div class="aurora" aria-hidden="true">
-    <span class="orb-a"></span>
-    <span class="orb-b"></span>
-    <span class="orb-c"></span>
+  <div class="background-stack" id="backgroundStack" aria-hidden="true">
+    <div class="bg-layer bg-blue is-active" id="bgLayerA"></div>
+    <div class="bg-layer" id="bgLayerB"></div>
+    <div class="bg-grain"></div>
   </div>
 
   <main class="stage" id="stage" aria-label="名词知识库气泡图">
@@ -1758,6 +2492,16 @@
   <div class="stage-ui stage-hint" id="stageHint">
     <span class="hint-ring"></span>
     <span>点击气泡查看释义 · 支持 Markdown</span>
+  </div>
+
+  <div class="stage-ui pager is-hidden" id="pager" aria-label="气泡分页">
+    <button class="pager-btn" id="prevPageBtn" type="button" aria-label="上一页">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <span class="pager-info" id="pageInfo" aria-live="polite">1 / 1</span>
+    <button class="pager-btn" id="nextPageBtn" type="button" aria-label="下一页">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
   </div>
 
   <section class="empty-state" id="emptyState" aria-live="polite">
@@ -1807,7 +2551,11 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="m8 8 4-4 4 4"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg>
         <span class="btn-label">导出备份</span>
       </button>
-      <button class="btn btn-primary" id="addBtn" type="button">
+      <button class="btn btn-ghost" id="settingsBtn" type="button" title="外观设置" aria-label="外观设置">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.96 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8.9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.1z"/></svg>
+        <span class="btn-label">设置</span>
+      </button>
+      <button class="btn btn-primary" id="addBtn" type="button" title="添加新词" aria-label="添加新词">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         <span class="btn-label">添加新词</span>
       </button>
@@ -1875,12 +2623,19 @@
 
         <div class="field">
           <div class="field-head">
-            <label for="descInput">详细解释 <span class="optional">支持 Markdown</span></label>
+            <label for="descInput">详细解释 <span class="optional">支持 Markdown / LaTeX · 最多 10000 字</span></label>
           </div>
-          <textarea id="descInput" name="desc" maxlength="12000" placeholder="写下它的定义、关键特征、应用场景……&#10;&#10;支持 **加粗**、- 列表、> 引用、`代码` 等格式。"></textarea>
+          <div class="math-tools" role="group" aria-label="公式快捷插入">
+            <span class="math-tools-label">公式</span>
+            <button class="math-chip" type="button" data-math-insert="inline">行内公式</button>
+            <button class="math-chip" type="button" data-math-insert="block">块级公式</button>
+            <button class="math-chip" type="button" data-math-insert="fraction">分数</button>
+            <button class="math-chip" type="button" data-math-insert="superscript">上标</button>
+          </div>
+          <textarea id="descInput" name="desc" maxlength="10000" placeholder="写下它的定义、关键特征、应用场景……&#10;&#10;支持 **加粗**、- 列表、> 引用、`代码` 和 $E=mc^2$ 等 LaTeX 公式。"></textarea>
           <p class="field-hint">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
-            <span>换行会被保留；也可以在详情里使用小标题和列表来组织内容。</span>
+            <span>换行会被保留；支持 $...$、\(...\) 行内公式和 $$...$$、\[...\] 块级公式。</span>
           </p>
         </div>
 
@@ -1964,6 +2719,110 @@
     </section>
   </div>
 
+  <!-- ============ 外观设置 ============ -->
+  <div class="modal-layer" id="settingsModal" aria-hidden="true">
+    <section class="modal-card settings-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="settings-head">
+        <div class="settings-mark" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.96 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8.9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.1z"/></svg>
+        </div>
+        <div>
+          <p class="eyebrow">APPEARANCE</p>
+          <h2 id="settingsTitle">外观设置</h2>
+        </div>
+        <button class="icon-x" id="settingsClose" type="button" aria-label="关闭外观设置">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="settings-scroll">
+        <section class="settings-section">
+          <div class="settings-section-head">
+            <h3>背景</h3>
+            <span class="settings-status" id="bgStatus">浅蓝渐变</span>
+          </div>
+
+          <div class="bg-preset-grid" role="group" aria-label="预设背景">
+            <button class="bg-preset is-active" type="button" data-bg-preset="blue">
+              <span class="bg-thumb thumb-blue"></span>
+              <span class="bg-preset-label">浅蓝渐变</span>
+            </button>
+            <button class="bg-preset" type="button" data-bg-preset="white">
+              <span class="bg-thumb thumb-white"></span>
+              <span class="bg-preset-label">纯白极简</span>
+            </button>
+            <button class="bg-preset" type="button" data-bg-preset="dark">
+              <span class="bg-thumb thumb-dark"></span>
+              <span class="bg-preset-label">暗黑星空</span>
+            </button>
+          </div>
+
+          <div class="settings-field">
+            <label for="wallpaperUrl">网络外链壁纸</label>
+            <div class="wallpaper-url-row">
+              <input id="wallpaperUrl" type="url" maxlength="2048" placeholder="https://example.com/wallpaper.jpg" autocomplete="off">
+              <button class="btn btn-apply" id="applyWallpaperBtn" type="button">应用</button>
+            </div>
+            <p class="settings-hint">直接使用网络原图，不压缩，清晰度最高。</p>
+          </div>
+
+          <div class="wallpaper-upload-row">
+            <button class="btn btn-upload" id="uploadWallpaperBtn" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="m8 8 4-4 4 4"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg>
+              上传本地壁纸
+            </button>
+            <button class="link-button" id="clearWallpaperBtn" type="button">清除壁纸</button>
+            <span class="upload-status" id="wallpaperStatus">未设置壁纸</span>
+          </div>
+          <p class="settings-hint">本地图片会自动压缩：最长边 2560px，优先 WebP，质量 0.8，最大 2MB。</p>
+          <input type="file" id="wallpaperInput" accept="image/*" hidden>
+        </section>
+
+        <section class="settings-section">
+          <div class="settings-section-head">
+            <h3>气泡风格</h3>
+            <span class="settings-status" id="styleStatus">玻璃泡泡</span>
+          </div>
+          <div class="bubble-style-grid" role="group" aria-label="气泡风格">
+            <button class="style-option is-active" type="button" data-bubble-style="glass">
+              <span class="style-preview preview-glass" aria-hidden="true"><i></i></span>
+              <span class="style-label">玻璃泡泡</span>
+              <span class="style-caption">半透明 · 毛玻璃</span>
+            </button>
+            <button class="style-option" type="button" data-bubble-style="flat">
+              <span class="style-preview preview-flat" aria-hidden="true"><i></i></span>
+              <span class="style-label">扁平极简</span>
+              <span class="style-caption">实色 · 轻投影</span>
+            </button>
+            <button class="style-option" type="button" data-bubble-style="soap">
+              <span class="style-preview preview-soap" aria-hidden="true"><i></i></span>
+              <span class="style-label">拟物肥皂泡</span>
+              <span class="style-caption">高透 · 边缘光</span>
+            </button>
+          </div>
+        </section>
+
+        <p class="settings-note">外观设置与知识库数据分开保存，不会包含在导出的 JSON 中。</p>
+      </div>
+
+      <div class="settings-footer">
+        <button class="btn btn-cancel" id="settingsDoneBtn" type="button">完成</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ 外观提示 ============ -->
+  <div class="modal-layer" id="messageModal" aria-hidden="true">
+    <section class="modal-card message-card" role="dialog" aria-modal="true" aria-labelledby="messageTitle">
+      <div class="message-mark" id="messageMark" aria-hidden="true">!</div>
+      <h2 id="messageTitle">提示</h2>
+      <p id="messageBody"></p>
+      <div class="message-actions">
+        <button class="btn btn-save" id="messageOk" type="button">知道了</button>
+      </div>
+    </section>
+  </div>
+
   <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="false"></div>
   <input type="file" id="fileInput" accept=".json,application/json" hidden>
 
@@ -1975,7 +2834,12 @@
        常量与状态
        ============================================================ */
     const STORAGE_KEY = 'knowledge-bubble-library-v1';
+    const APPEARANCE_KEY = 'kb-appearance-settings';
     const MAX_FILE_SIZE = 4 * 1024 * 1024;
+    const MAX_WALLPAPER_BYTES = 2 * 1024 * 1024;
+    const MAX_DESC_LENGTH = 10000;
+    const PAGE_SIZE = 40;
+    const DENSITY_THRESHOLD = 30;
     const FONT_STACK = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", sans-serif';
     const PALETTE = [
       '#BAE6FD', '#7DD3FC', '#E0F2FE',
@@ -1992,9 +2856,16 @@
       topbar: $('#topbar'),
       canvas: $('#bubbleCanvas'),
       bubbleLayer: $('#bubbleLayer'),
+      backgroundStack: $('#backgroundStack'),
+      bgLayerA: $('#bgLayerA'),
+      bgLayerB: $('#bgLayerB'),
       countPill: $('#countPill'),
       countText: $('#countText'),
       resetDataBtn: $('#resetDataBtn'),
+      pager: $('#pager'),
+      pageInfo: $('#pageInfo'),
+      prevPageBtn: $('#prevPageBtn'),
+      nextPageBtn: $('#nextPageBtn'),
       stageHint: $('#stageHint'),
       emptyState: $('#emptyState'),
       emptyAddBtn: $('#emptyAddBtn'),
@@ -2008,7 +2879,25 @@
       addBtn: $('#addBtn'),
       importBtn: $('#importBtn'),
       exportBtn: $('#exportBtn'),
+      settingsBtn: $('#settingsBtn'),
       fileInput: $('#fileInput'),
+
+      settingsModal: $('#settingsModal'),
+      settingsClose: $('#settingsClose'),
+      settingsDoneBtn: $('#settingsDoneBtn'),
+      bgStatus: $('#bgStatus'),
+      styleStatus: $('#styleStatus'),
+      wallpaperUrl: $('#wallpaperUrl'),
+      applyWallpaperBtn: $('#applyWallpaperBtn'),
+      uploadWallpaperBtn: $('#uploadWallpaperBtn'),
+      clearWallpaperBtn: $('#clearWallpaperBtn'),
+      wallpaperStatus: $('#wallpaperStatus'),
+      wallpaperInput: $('#wallpaperInput'),
+
+      messageModal: $('#messageModal'),
+      messageTitle: $('#messageTitle'),
+      messageBody: $('#messageBody'),
+      messageOk: $('#messageOk'),
 
       detailModal: $('#detailModal'),
       detailCover: $('#detailCover'),
@@ -2071,6 +2960,25 @@
     let modalStack = [];
     let storageAvailable = true;
 
+    const DEFAULT_APPEARANCE = {
+      background: 'blue',
+      basePreset: 'blue',
+      wallpaper: '',
+      wallpaperType: '',
+      bubbleStyle: 'glass'
+    };
+    let appearance = { ...DEFAULT_APPEARANCE };
+    let activeBgLayer = 0;
+    let currentBgKey = '';
+    let wallpaperBusy = false;
+    let bubbleStyleTimer = null;
+    let currentPage = 1;
+    let totalPages = 1;
+    let densityScale = 1;
+    let focusState = null;
+    let focusOpenTimer = null;
+    let focusOutTimer = null;
+
     const view = {
       w: 1,
       h: 1,
@@ -2090,6 +2998,10 @@
        ============================================================ */
     function clamp(value, min, max) {
       return Math.min(max, Math.max(min, value));
+    }
+
+    function lerp(from, to, progress) {
+      return from + (to - from) * progress;
     }
 
     function rand(min, max) {
@@ -2316,7 +3228,9 @@
 面对一句话时，我们不会平均地看每个词，而是会把注意力放在与当前任务最相关的位置。注意力机制把这种“选择性关注”变成了可学习的计算。
 
 ### 缩放点积注意力
-\`Attention(Q, K, V) = softmax(QKᵀ / √dₖ)V\`
+$$
+\\mathrm{Attention}(Q,K,V)=\\mathrm{softmax}\\left(\\frac{QK^{T}}{\\sqrt{d_k}}\\right)V
+$$
 
 - **Q** Query：当前要查询的信息
 - **K** Key：用来匹配的索引
@@ -2330,16 +3244,32 @@
        Markdown 安全渲染（零依赖，断网可用）
        ============================================================ */
     function renderInline(raw) {
-      const stash = [];
-      const keep = (html) => {
-        const token = '\u0000' + stash.length + '\u0000';
-        stash.push(html);
-        return token;
-      };
+      const codeStash = [];
+      const mathStash = [];
 
       let text = escapeHtml(raw);
 
-      text = text.replace(/`([^`\n]+)`/g, (_, code) => keep('<code>' + code + '</code>'));
+      // 先保护行内代码，再保护公式，避免公式中的 *、_ 等被 Markdown 误解析。
+      text = text.replace(/`([^`\n]+)`/g, (_, code) => {
+        const token = '\u0000' + codeStash.length + '\u0000';
+        codeStash.push('<code>' + code + '</code>');
+        return token;
+      });
+
+      text = text.replace(
+        /(\$\$[^$\n]+\$\$|\$[^$\n]+\$|\\\([^\n]+?\\\)|\\\[[^\n]+?\\\])/g,
+        (math) => {
+          const token = '\u0002' + mathStash.length + '\u0002';
+          mathStash.push(math);
+          return token;
+        }
+      );
+
+      const keep = (html) => {
+        const token = '\u0000' + codeStash.length + '\u0000';
+        codeStash.push(html);
+        return token;
+      };
 
       text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, url) => {
         return keep('<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + label + '</a>');
@@ -2349,11 +3279,53 @@
       text = text.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
       text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
 
-      return text.replace(/\u0000(\d+)\u0000/g, (_, index) => stash[Number(index)] || '');
+      // 循环还原，确保链接标签内的公式占位符也能被还原。
+      let previous = '';
+      let guard = 0;
+      while (text !== previous && guard < 6) {
+        previous = text;
+        text = text.replace(/\u0002(\d+)\u0002/g, (_, index) => mathStash[Number(index)] || '');
+        text = text.replace(/\u0000(\d+)\u0000/g, (_, index) => codeStash[Number(index)] || '');
+        guard += 1;
+      }
+      return text;
+    }
+
+    function parseDisplayMathBlock(lines, start) {
+      const first = lines[start].trim();
+      let opener = '';
+      let closer = '';
+
+      if (first.startsWith('$$')) {
+        opener = '$$';
+        closer = '$$';
+      } else if (first.startsWith('\\[')) {
+        opener = '\\[';
+        closer = '\\]';
+      } else {
+        return null;
+      }
+
+      let block = first;
+      if (first.slice(opener.length).includes(closer)) {
+        return { html: '<div class="math-block">' + escapeHtml(block) + '</div>', next: start + 1 };
+      }
+
+      let index = start + 1;
+      while (index < lines.length) {
+        block += '\n' + lines[index];
+        if (lines[index].includes(closer)) {
+          return { html: '<div class="math-block">' + escapeHtml(block) + '</div>', next: index + 1 };
+        }
+        index += 1;
+      }
+
+      // 没有闭合定界符：返回 null，交回普通段落处理，按原文显示。
+      return null;
     }
 
     function isBlockStart(line) {
-      return /^\s*(```|#{1,6}\s|>\s?|[-*+]\s+|\d+[.)]\s+|([-*_])(?:\s*\2){2,}\s*$)/.test(line);
+      return /^\s*(\$\$|\\\[|```|#{1,6}\s|>\s?|[-*+]\s+|\d+[.)]\s+|([-*_])(?:\s*\2){2,}\s*$)/.test(line);
     }
 
     function renderMarkdown(markdown) {
@@ -2382,6 +3354,13 @@
           }
           if (i < lines.length) i += 1;
           output.push('<pre><code>' + escapeHtml(code.join('\n')) + '</code></pre>');
+          continue;
+        }
+
+        const mathBlock = parseDisplayMathBlock(lines, i);
+        if (mathBlock) {
+          output.push(mathBlock.html);
+          i = mathBlock.next;
           continue;
         }
 
@@ -2445,6 +3424,77 @@
     }
 
     /* ============================================================
+       KaTeX 公式渲染
+       ============================================================ */
+    let mathRetryTimer = null;
+    let pendingMathRoot = null;
+
+    function tryTypesetMath(root) {
+      if (!root || !window.katex || typeof window.renderMathInElement !== 'function') {
+        return false;
+      }
+
+      try {
+        window.renderMathInElement(root, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'option'],
+          throwOnError: false,
+          strict: false,
+          trust: false,
+          maxSize: 10,
+          errorCallback: () => {}
+        });
+
+        // 完整定界符内如果公式语法错误，KaTeX 会生成错误节点。
+        // 这里把它还原为普通文本，保证页面不中断。
+        const replaceWithFallback = (target, source) => {
+          const fallback = document.createElement('span');
+          fallback.className = 'math-fallback';
+          fallback.title = '公式渲染失败，已按原文显示';
+          fallback.textContent = source || '';
+          target.replaceWith(fallback);
+        };
+
+        root.querySelectorAll('.katex-error').forEach((node) => {
+          replaceWithFallback(node, node.textContent || '');
+        });
+
+        root.querySelectorAll('.katex').forEach((node) => {
+          const hasErrorColor = node.querySelector('[mathcolor="#cc0000"]') ||
+            node.querySelector('[style*="color: rgb(204, 0, 0)"]');
+          if (!hasErrorColor) return;
+          const annotation = node.querySelector('annotation[encoding="application/x-tex"]');
+          const source = annotation ? annotation.textContent : node.textContent;
+          replaceWithFallback(node.closest('.katex-display') || node, source);
+        });
+      } catch (error) {
+        // 渲染异常时保留原始文本，不影响详情页其他内容。
+      }
+
+      return true;
+    }
+
+    function typesetMath(root) {
+      pendingMathRoot = root;
+      if (tryTypesetMath(root)) return;
+      if (mathRetryTimer) return;
+
+      let attempts = 0;
+      mathRetryTimer = window.setInterval(() => {
+        attempts += 1;
+        if (tryTypesetMath(pendingMathRoot) || attempts >= 40) {
+          window.clearInterval(mathRetryTimer);
+          mathRetryTimer = null;
+        }
+      }, 125);
+    }
+
+    /* ============================================================
        本地存储
        ============================================================ */
     try {
@@ -2469,7 +3519,7 @@
       if (usedIds.has(id)) id = uid();
       usedIds.add(id);
 
-      const desc = typeof raw.desc === 'string' ? raw.desc.replace(/\r\n?/g, '\n').slice(0, 12000) : '';
+      const desc = typeof raw.desc === 'string' ? raw.desc.replace(/\r\n?/g, '\n').slice(0, MAX_DESC_LENGTH) : '';
       const imageUrl = sanitizeImageUrl(raw.imageUrl);
       const color = normalizeColor(raw.color);
       const sizeBasis = normalizeName(raw.sizeBasis);
@@ -2593,8 +3643,413 @@
     }
 
     /* ============================================================
+       外观设置（独立 localStorage，不进入词条导出）
+       ============================================================ */
+    const BG_LABELS = {
+      blue: '浅蓝渐变',
+      white: '纯白极简',
+      dark: '暗黑星空',
+      image: '自定义壁纸'
+    };
+    const STYLE_LABELS = {
+      glass: '玻璃泡泡',
+      flat: '扁平极简',
+      soap: '拟物肥皂泡'
+    };
+
+    function isValidWallpaper(value) {
+      if (typeof value !== 'string' || !value) return false;
+      return /^https?:\/\//i.test(value) || /^data:image\//i.test(value);
+    }
+
+    function sanitizeAppearance(raw) {
+      const result = { ...DEFAULT_APPEARANCE };
+      if (!raw || typeof raw !== 'object') return result;
+
+      const basePreset = ['blue', 'white', 'dark'].includes(raw.basePreset)
+        ? raw.basePreset
+        : 'blue';
+      result.basePreset = basePreset;
+
+      if (['blue', 'white', 'dark'].includes(raw.background)) {
+        result.background = raw.background;
+        result.basePreset = raw.background;
+      } else if (raw.background === 'image' && isValidWallpaper(raw.wallpaper)) {
+        result.background = 'image';
+        result.wallpaper = raw.wallpaper;
+        result.wallpaperType = String(raw.wallpaper).startsWith('data:image/') ? 'upload' : 'url';
+      } else {
+        result.background = basePreset;
+      }
+
+      if (['glass', 'flat', 'soap'].includes(raw.bubbleStyle)) {
+        result.bubbleStyle = raw.bubbleStyle;
+      }
+
+      return result;
+    }
+
+    function loadAppearance() {
+      if (!storageAvailable) return { ...DEFAULT_APPEARANCE };
+      try {
+        const raw = window.localStorage.getItem(APPEARANCE_KEY);
+        if (!raw) return { ...DEFAULT_APPEARANCE };
+        return sanitizeAppearance(JSON.parse(raw));
+      } catch (error) {
+        return { ...DEFAULT_APPEARANCE };
+      }
+    }
+
+    function persistAppearance(next) {
+      if (!storageAvailable) return false;
+      try {
+        window.localStorage.setItem(APPEARANCE_KEY, JSON.stringify(next));
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function cssUrl(value) {
+      return 'url("' + String(value).replace(/\\/g, '%5C').replace(/"/g, '%22') + '")';
+    }
+
+    function prepareBgLayer(layer, config) {
+      layer.className = 'bg-layer';
+      layer.style.backgroundImage = '';
+
+      if (config.background === 'image' && config.wallpaper) {
+        layer.classList.add('bg-image');
+        layer.style.backgroundImage = cssUrl(config.wallpaper);
+      } else {
+        const preset = ['blue', 'white', 'dark'].includes(config.background)
+          ? config.background
+          : 'blue';
+        layer.classList.add('bg-' + preset);
+      }
+    }
+
+    function setBackgroundVisual(config, immediate = false) {
+      const key = config.background === 'image'
+        ? 'image|' + config.wallpaper
+        : config.background;
+
+      if (key === currentBgKey && !immediate) return;
+
+      const layers = [el.bgLayerA, el.bgLayerB];
+      const nextIndex = immediate ? 0 : (1 - activeBgLayer);
+      const next = layers[nextIndex];
+      const previous = layers[activeBgLayer];
+
+      prepareBgLayer(next, config);
+
+      if (immediate) {
+        next.style.transition = 'none';
+        layers.forEach((layer) => layer.classList.toggle('is-active', layer === next));
+        activeBgLayer = nextIndex;
+        void next.offsetWidth;
+        next.style.transition = '';
+      } else {
+        next.classList.add('is-active');
+        previous.classList.remove('is-active');
+        activeBgLayer = nextIndex;
+      }
+
+      currentBgKey = key;
+    }
+
+    function applyBodyAppearance() {
+      const body = document.body;
+      ['bg-blue', 'bg-white', 'bg-dark', 'has-dark-bg', 'has-photo-bg',
+        'bubble-style-glass', 'bubble-style-flat', 'bubble-style-soap'].forEach((name) => {
+        body.classList.remove(name);
+      });
+
+      body.classList.add('bubble-style-' + appearance.bubbleStyle);
+
+      if (appearance.background === 'image') {
+        body.classList.add('has-photo-bg');
+      } else {
+        body.classList.add('bg-' + appearance.background);
+        if (appearance.background === 'dark') body.classList.add('has-dark-bg');
+      }
+
+      const themeMeta = document.querySelector('meta[name="theme-color"]');
+      if (themeMeta) {
+        themeMeta.setAttribute('content', appearance.background === 'dark' ? '#0F172A' : '#E0F2FE');
+      }
+    }
+
+    function syncAppearanceUI() {
+      document.querySelectorAll('[data-bg-preset]').forEach((button) => {
+        const active = appearance.background !== 'image' &&
+          appearance.background === button.dataset.bgPreset;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+
+      document.querySelectorAll('[data-bubble-style]').forEach((button) => {
+        const active = appearance.bubbleStyle === button.dataset.bubbleStyle;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+
+      el.bgStatus.textContent = BG_LABELS[appearance.background] || '自定义壁纸';
+      el.styleStatus.textContent = STYLE_LABELS[appearance.bubbleStyle] || '玻璃泡泡';
+
+      if (appearance.background === 'image' && appearance.wallpaperType === 'url') {
+        el.wallpaperUrl.value = appearance.wallpaper;
+      }
+
+      if (appearance.background === 'image') {
+        el.wallpaperStatus.textContent = appearance.wallpaperType === 'upload'
+          ? '本地壁纸已启用'
+          : '网络壁纸已启用';
+      } else {
+        el.wallpaperStatus.textContent = '未设置壁纸';
+      }
+
+      el.clearWallpaperBtn.disabled = appearance.background !== 'image';
+    }
+
+    function applyAppearance(next, options = {}) {
+      const normalized = sanitizeAppearance(next);
+      if (options.persist !== false && !persistAppearance(normalized)) {
+        return false;
+      }
+
+      appearance = normalized;
+      applyBodyAppearance();
+      setBackgroundVisual(appearance, Boolean(options.immediate));
+      syncAppearanceUI();
+      return true;
+    }
+
+    function setBackgroundPreset(preset) {
+      if (!['blue', 'white', 'dark'].includes(preset)) return;
+      const next = {
+        ...appearance,
+        background: preset,
+        basePreset: preset,
+        wallpaper: '',
+        wallpaperType: ''
+      };
+      if (!applyAppearance(next)) {
+        showMessage('保存失败', '外观设置无法写入浏览器本地存储，请检查存储权限或剩余空间。');
+      }
+    }
+
+    function setBubbleStyle(style) {
+      if (!['glass', 'flat', 'soap'].includes(style)) return;
+
+      const next = { ...appearance, bubbleStyle: style };
+      if (!applyAppearance(next)) {
+        showMessage('保存失败', '外观设置无法写入浏览器本地存储，请检查存储权限或剩余空间。');
+        return;
+      }
+
+      document.body.classList.remove('bubble-style-changing');
+      void document.body.offsetWidth;
+      document.body.classList.add('bubble-style-changing');
+      if (bubbleStyleTimer) window.clearTimeout(bubbleStyleTimer);
+      bubbleStyleTimer = window.setTimeout(() => {
+        document.body.classList.remove('bubble-style-changing');
+        bubbleStyleTimer = null;
+      }, 380);
+    }
+
+    function showMessage(title, body) {
+      el.messageTitle.textContent = title;
+      el.messageBody.textContent = body;
+      openModal(el.messageModal, el.messageOk);
+    }
+
+    function readFileAsDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function loadImageElement(src) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('Image load failed'));
+        image.src = src;
+      });
+    }
+
+    function canvasToBlob(canvas, mime, quality) {
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Canvas export failed'));
+        }, mime, quality);
+      });
+    }
+
+    function blobToDataURL(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('BlobReader failed'));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function supportsWebP() {
+      try {
+        const canvas = document.createElement('canvas');
+        return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function setWallpaperBusy(busy, text) {
+      wallpaperBusy = busy;
+      el.uploadWallpaperBtn.disabled = busy;
+      el.applyWallpaperBtn.disabled = busy;
+      if (text) el.wallpaperStatus.textContent = text;
+    }
+
+    async function applyWallpaperUrl() {
+      if (wallpaperBusy) return;
+
+      const url = el.wallpaperUrl.value.trim();
+      if (!isNetworkUrl(url)) {
+        showMessage('链接无效', '请输入以 http:// 或 https:// 开头的网络图片链接。');
+        return;
+      }
+
+      const previous = { ...appearance };
+      setWallpaperBusy(true, '正在加载…');
+
+      try {
+        await loadImageElement(url);
+        const next = {
+          ...appearance,
+          background: 'image',
+          wallpaper: url,
+          wallpaperType: 'url'
+        };
+        if (!applyAppearance(next)) {
+          applyAppearance(previous, { persist: false, immediate: true });
+          showMessage('保存失败', '外观设置无法写入浏览器本地存储，请检查存储权限或剩余空间。');
+          return;
+        }
+        showToast('网络壁纸已应用', 'success');
+      } catch (error) {
+        showMessage('壁纸加载失败', '无法加载该网络图片，请检查链接是否可访问，或换一张图片。');
+      } finally {
+        setWallpaperBusy(false);
+        syncAppearanceUI();
+      }
+    }
+
+    async function handleWallpaperUpload(file) {
+      if (!file || wallpaperBusy) return;
+
+      if (!file.type.startsWith('image/')) {
+        showMessage('文件类型不支持', '请选择 JPG、PNG、WebP 等图片文件。');
+        return;
+      }
+
+      const previous = { ...appearance };
+      setWallpaperBusy(true, '正在压缩…');
+
+      try {
+        const source = await readFileAsDataURL(file);
+        const image = await loadImageElement(source);
+        const naturalWidth = image.naturalWidth || image.width;
+        const naturalHeight = image.naturalHeight || image.height;
+        const maxSide = 2560;
+        const scale = Math.min(1, maxSide / Math.max(naturalWidth, naturalHeight));
+        const width = Math.max(1, Math.round(naturalWidth * scale));
+        const height = Math.max(1, Math.round(naturalHeight * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Canvas context unavailable');
+
+        const webp = supportsWebP();
+        if (!webp) {
+          context.fillStyle = '#FFFFFF';
+          context.fillRect(0, 0, width, height);
+        }
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+        context.drawImage(image, 0, 0, width, height);
+
+        const mime = webp ? 'image/webp' : 'image/jpeg';
+        const blob = await canvasToBlob(canvas, mime, 0.8);
+
+        if (blob.size > MAX_WALLPAPER_BYTES) {
+          applyAppearance(previous, { persist: false, immediate: true });
+          showMessage('图片过大', '图片过大，请换一张或使用网络链接');
+          return;
+        }
+
+        const dataUrl = await blobToDataURL(blob);
+        const next = {
+          ...appearance,
+          background: 'image',
+          wallpaper: dataUrl,
+          wallpaperType: 'upload'
+        };
+
+        if (!applyAppearance(next)) {
+          applyAppearance(previous, { persist: false, immediate: true });
+          showMessage('壁纸保存失败', '壁纸文件过大，请更换较小图片，或使用网络图片链接');
+          return;
+        }
+
+        showToast('本地壁纸已应用', 'success');
+      } catch (error) {
+        applyAppearance(previous, { persist: false, immediate: true });
+        showMessage('壁纸处理失败', '无法读取或压缩这张图片，请更换图片或使用网络链接。');
+      } finally {
+        setWallpaperBusy(false);
+        syncAppearanceUI();
+        el.wallpaperInput.value = '';
+      }
+    }
+
+    function clearWallpaper() {
+      if (wallpaperBusy) return;
+      const preset = appearance.basePreset || 'blue';
+      const next = {
+        ...appearance,
+        background: preset,
+        wallpaper: '',
+        wallpaperType: ''
+      };
+      if (!applyAppearance(next)) {
+        showMessage('保存失败', '外观设置无法写入浏览器本地存储，请检查存储权限或剩余空间。');
+      }
+    }
+
+    function initAppearance() {
+      appearance = loadAppearance();
+      applyAppearance(appearance, { persist: false, immediate: true });
+    }
+
+    /* ============================================================
        气泡模型
        ============================================================ */
+    function getDensityScale(count) {
+      if (count <= DENSITY_THRESHOLD) return 1;
+      const progress = Math.min(1, (count - DENSITY_THRESHOLD) / (PAGE_SIZE - DENSITY_THRESHOLD));
+      const width = view.w || window.innerWidth;
+      const shrink = width < 640 ? 0.42 : width < 1000 ? 0.32 : 0.22;
+      return 1 - progress * shrink;
+    }
+
     function computeRadius(name, id, sizeBasis) {
       const width = view.w || window.innerWidth;
       const basis = sizeBasis || name;
@@ -2603,7 +4058,7 @@
       const base = 54 + Math.min(chars, 14) * 4.2;
       const jitter = 0.94 + (hashString(id) % 13) / 100;
       const max = width < 480 ? 84 : width < 700 ? 96 : 112;
-      return clamp(base * viewportScale * jitter, 36, max);
+      return clamp(base * viewportScale * jitter * densityScale, 30, max);
     }
 
     function getBounds() {
@@ -2612,7 +4067,7 @@
       const headerRect = el.topbar.getBoundingClientRect();
       const side = width < 560 ? 15 : width < 900 ? 20 : 28;
       const top = Math.max(headerRect.bottom + (width < 840 ? 16 : 24), 92);
-      const bottom = Math.max(top + 130, height - (width < 840 ? 42 : 60));
+      const bottom = Math.max(top + 130, height - (width < 840 ? 62 : 60));
       return {
         left: side,
         right: Math.max(side + 80, width - side),
@@ -2662,8 +4117,9 @@
       // 最佳候选采样：让初始气泡自然铺满画面，而不是随机挤在一角。
       let best = { x: rand(minX, maxX), y: rand(minY, maxY) };
       let bestScore = -Infinity;
+      const attempts = existing.length >= 20 ? 64 : 34;
 
-      for (let attempt = 0; attempt < 34; attempt += 1) {
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
         const x = rand(minX, maxX);
         const y = rand(minY, maxY);
         let nearestGap = Infinity;
@@ -2757,7 +4213,7 @@
       let chosen = null;
 
       // 短名词优先保持单行，字号太小时再退回两行。
-      for (let size = startSize; size >= 11; size -= 0.5) {
+      for (let size = startSize; size >= 12; size -= 0.5) {
         const lines = wrapName(bubble.name, maxWidth, size);
         if (lines.length === 1 && size >= 18) {
           chosen = { size, lines };
@@ -2767,7 +4223,7 @@
 
       // 其次优先选择最多两行的方案，视觉更稳定。
       if (!chosen) {
-        for (let size = startSize; size >= 11; size -= 0.5) {
+        for (let size = startSize; size >= 12; size -= 0.5) {
           const lines = wrapName(bubble.name, maxWidth, size);
           if (lines.length <= 2) {
             chosen = { size, lines };
@@ -2777,7 +4233,7 @@
       }
 
       if (!chosen) {
-        for (let size = startSize; size >= 10; size -= 0.5) {
+        for (let size = startSize; size >= 12; size -= 0.5) {
           const lines = wrapName(bubble.name, maxWidth, size);
           if (lines.length <= 3) {
             chosen = { size, lines };
@@ -2787,7 +4243,7 @@
       }
 
       if (!chosen) {
-        const size = 10;
+        const size = 12;
         const lines = wrapName(bubble.name, maxWidth, size).slice(0, 3);
         if (lines.length === 3) {
           lines[2] = truncateLine(lines[2], maxWidth, size);
@@ -2836,10 +4292,18 @@
 
     function rebuildBubbles(options = {}) {
       const initial = Boolean(options.initial);
+      totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+      currentPage = clamp(currentPage, 1, totalPages);
+
+      const pageStart = (currentPage - 1) * PAGE_SIZE;
+      const pageEntries = entries.slice(pageStart, pageStart + PAGE_SIZE);
+      densityScale = getDensityScale(pageEntries.length);
+      document.body.classList.toggle('is-dense', pageEntries.length > DENSITY_THRESHOLD);
+
       const oldMap = new Map(bubbles.map((bubble) => [bubble.id, bubble]));
       const fresh = [];
 
-      entries.forEach((entry, index) => {
+      pageEntries.forEach((entry, index) => {
         const old = oldMap.get(entry.id);
         if (old) {
           const radius = computeRadius(entry.name, entry.id, entry.sizeBasis);
@@ -2859,7 +4323,7 @@
           return;
         }
 
-        const bubble = makeBubble(entry, fresh, index, initial, entries.length);
+        const bubble = makeBubble(entry, fresh, index, initial, pageEntries.length);
         clampBubble(bubble);
         fresh.push(bubble);
       });
@@ -2867,6 +4331,25 @@
       bubbles = fresh.sort((a, b) => b.r - a.r);
       applySearch();
       syncBubbleElements();
+      updatePaginationUI();
+    }
+
+    function updatePaginationUI() {
+      totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+      currentPage = clamp(currentPage, 1, totalPages);
+      const show = totalPages > 1 && entries.length > 0;
+      el.pager.classList.toggle('is-hidden', !show);
+      el.pageInfo.textContent = currentPage + ' / ' + totalPages;
+      el.prevPageBtn.disabled = currentPage <= 1;
+      el.nextPageBtn.disabled = currentPage >= totalPages;
+    }
+
+    function goToPage(page) {
+      if (focusState) return;
+      const next = clamp(Math.round(page), 1, totalPages);
+      if (next === currentPage) return;
+      currentPage = next;
+      rebuildBubbles();
     }
 
     /* ============================================================
@@ -2889,7 +4372,7 @@
 
       node.addEventListener('click', (event) => {
         event.stopPropagation();
-        openDetail(node.dataset.id);
+        focusBubbleAndOpen(node.dataset.id);
       });
 
       bubble.el = node;
@@ -2952,14 +4435,128 @@
       });
     }
 
-    function renderBubbleElements() {
+    function clearBubbleFocus() {
+      if (focusOpenTimer) {
+        window.clearTimeout(focusOpenTimer);
+        focusOpenTimer = null;
+      }
+      if (focusOutTimer) {
+        window.clearTimeout(focusOutTimer);
+        focusOutTimer = null;
+      }
+
+      document.body.classList.remove('is-focusing');
       bubbles.forEach((bubble) => {
         if (!bubble.el) return;
+        bubble.el.classList.remove('is-focus-target');
+        bubble.el.style.zIndex = '';
+      });
+      focusState = null;
+    }
+
+    function focusBubbleAndOpen(id) {
+      if (focusState) return;
+      const bubble = bubbles.find((item) => item.id === id);
+      if (!bubble || !bubble.el) return;
+
+      const duration = reduceMotion ? 90 : 400;
+      const finalScale = 1.42;
+      const finalRadius = bubble.r * finalScale;
+
+      focusState = {
+        id,
+        phase: 'in',
+        start: performance.now(),
+        duration,
+        home: { x: bubble.x, y: bubble.y },
+        target: {
+          x: view.bounds.left + finalRadius + 18,
+          y: view.bounds.top + finalRadius + 14
+        },
+        scale: finalScale
+      };
+
+      document.body.classList.add('is-focusing');
+      bubble.el.classList.add('is-focus-target');
+      bubble.el.style.zIndex = '45';
+
+      if (focusOpenTimer) window.clearTimeout(focusOpenTimer);
+      focusOpenTimer = window.setTimeout(() => {
+        focusOpenTimer = null;
+        if (!focusState || focusState.id !== id) return;
+        focusState.phase = 'hold';
+        openDetail(id);
+      }, duration + 20);
+    }
+
+    function releaseBubbleFocus() {
+      if (!focusState) return;
+      if (focusOpenTimer) {
+        window.clearTimeout(focusOpenTimer);
+        focusOpenTimer = null;
+      }
+
+      const stillExists = entries.some((entry) => entry.id === focusState.id);
+      const bubble = bubbles.find((item) => item.id === focusState.id);
+      if (!stillExists || !bubble) {
+        clearBubbleFocus();
+        return;
+      }
+
+      bubble.x = focusState.home.x;
+      bubble.y = focusState.home.y;
+      bubble.vx = 0;
+      bubble.vy = 0;
+      focusState.phase = 'out';
+      focusState.start = performance.now();
+
+      if (focusOutTimer) window.clearTimeout(focusOutTimer);
+      focusOutTimer = window.setTimeout(() => {
+        focusOutTimer = null;
+        clearBubbleFocus();
+      }, focusState.duration + 40);
+    }
+
+    function renderBubbleElements() {
+      const now = performance.now();
+      let dimFactor = 1;
+
+      if (focusState) {
+        const progress = clamp((now - focusState.start) / focusState.duration, 0, 1);
+        dimFactor = focusState.phase === 'out'
+          ? 0.2 + 0.8 * easeOutCubic(progress)
+          : 0.2 + 0.8 * (1 - easeOutCubic(progress));
+      }
+
+      bubbles.forEach((bubble) => {
+        if (!bubble.el) return;
+
         const enterScale = (0.70 + 0.30 * easeOutCubic(bubble.enter)) * (1 + bubble.breath);
+        let visualX = bubble.x;
+        let visualY = bubble.y;
+        let visualScale = enterScale;
+
+        if (focusState && bubble.id === focusState.id) {
+          const progress = clamp((now - focusState.start) / focusState.duration, 0, 1);
+          const eased = focusState.phase === 'out'
+            ? 1 - easeOutCubic(progress)
+            : easeOutCubic(progress);
+          visualX = lerp(focusState.home.x, focusState.target.x, eased);
+          visualY = lerp(focusState.home.y, focusState.target.y, eased);
+          visualScale = enterScale * (1 + (focusState.scale - 1) * eased);
+        }
+
         bubble.el.style.transform =
-          'translate3d(' + (bubble.x - bubble.r).toFixed(2) + 'px,' +
-          (bubble.y - bubble.r).toFixed(2) + 'px,0) scale(' + enterScale.toFixed(4) + ')';
-        bubble.el.style.opacity = clamp(bubble.alpha * easeOutCubic(bubble.enter), 0, 1).toFixed(3);
+          'translate3d(' + (visualX - bubble.r).toFixed(2) + 'px,' +
+          (visualY - bubble.r).toFixed(2) + 'px,0) scale(' + visualScale.toFixed(4) + ')';
+
+        let opacity = clamp(bubble.alpha * easeOutCubic(bubble.enter), 0, 1);
+        if (focusState && bubble.id !== focusState.id) {
+          opacity *= dimFactor;
+        } else if (focusState) {
+          opacity = Math.max(opacity, 0.96);
+        }
+        bubble.el.style.opacity = opacity.toFixed(3);
       });
     }
 
@@ -3325,7 +4922,13 @@
       const term = el.searchInput.value.trim();
       query = term;
       const lowered = term.toLocaleLowerCase();
-      let matches = 0;
+      let totalMatches = 0;
+
+      entries.forEach((entry) => {
+        if (!lowered || (entry.name + ' ' + entry.desc).toLocaleLowerCase().includes(lowered)) {
+          totalMatches += 1;
+        }
+      });
 
       bubbles.forEach((bubble) => {
         const isMatch = !lowered || (bubble.name + ' ' + bubble.desc).toLocaleLowerCase().includes(lowered);
@@ -3335,16 +4938,16 @@
         if (bubble.el) {
           bubble.el.classList.toggle('is-match', Boolean(lowered) && isMatch);
         }
-        if (isMatch) matches += 1;
       });
 
       el.searchShell.classList.toggle('has-query', Boolean(term));
-      el.searchEmpty.classList.toggle('is-visible', Boolean(term) && entries.length > 0 && matches === 0);
+      el.searchEmpty.classList.toggle('is-visible', Boolean(term) && entries.length > 0 && totalMatches === 0);
       el.searchEmptyTerm.textContent = term.length > 18 ? term.slice(0, 18) + '…' : term;
 
       if (!entries.length) {
         el.countPill.classList.add('is-hidden');
         el.stageHint.classList.add('is-hidden');
+        el.pager.classList.add('is-hidden');
       } else {
         el.countPill.classList.remove('is-hidden');
         el.stageHint.classList.toggle('is-hidden', Boolean(term));
@@ -3353,10 +4956,37 @@
       if (!term) {
         el.countText.textContent = entries.length + ' 个名词';
       } else {
-        el.countText.textContent = matches + ' / ' + entries.length + ' 个匹配';
+        el.countText.textContent = totalMatches + ' / ' + entries.length + ' 个匹配';
       }
 
       updateEmptyState();
+    }
+
+    function handleSearchChanged() {
+      const term = el.searchInput.value.trim();
+      if (term) {
+        const lowered = term.toLocaleLowerCase();
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const currentPageHasMatch = entries
+          .slice(start, start + PAGE_SIZE)
+          .some((entry) => (entry.name + ' ' + entry.desc).toLocaleLowerCase().includes(lowered));
+
+        if (!currentPageHasMatch) {
+          const firstMatch = entries.findIndex((entry) =>
+            (entry.name + ' ' + entry.desc).toLocaleLowerCase().includes(lowered)
+          );
+          if (firstMatch >= 0) {
+            const targetPage = Math.floor(firstMatch / PAGE_SIZE) + 1;
+            if (targetPage !== currentPage) {
+              currentPage = targetPage;
+              rebuildBubbles();
+              return;
+            }
+          }
+        }
+      }
+
+      applySearch();
     }
 
     function updateEmptyState() {
@@ -3365,6 +4995,7 @@
       if (isEmpty) {
         el.countPill.classList.add('is-hidden');
         el.stageHint.classList.add('is-hidden');
+        el.pager.classList.add('is-hidden');
         el.searchEmpty.classList.remove('is-visible');
       }
     }
@@ -3406,7 +5037,10 @@
       modalStack = modalStack.filter((item) => item !== modal);
       if (!modalStack.length) document.body.classList.remove('modal-open');
 
-      if (modal === el.detailModal) currentDetailId = null;
+      if (modal === el.detailModal) {
+        releaseBubbleFocus();
+        currentDetailId = null;
+      }
       if (modal === el.formModal) editingEntryId = null;
       if (modal === el.importModal) {
         pendingImport = null;
@@ -3447,6 +5081,7 @@
 
       el.detailTitle.textContent = entry.name;
       el.detailDesc.innerHTML = renderMarkdown(entry.desc);
+      typesetMath(el.detailDesc);
       el.detailIndex.textContent = String(index + 1).padStart(2, '0') + ' / ' + total;
       el.detailDot.style.background = entry.color;
       el.detailRule.style.background = entry.color;
@@ -3531,6 +5166,7 @@
       if (entries.some((entry) => entry.id === record.entry.id)) return;
 
       entries.splice(Math.min(record.index, entries.length), 0, record.entry);
+      currentPage = Math.floor(Math.min(record.index, entries.length - 1) / PAGE_SIZE) + 1;
       const saved = persist();
       rebuildBubbles();
       showToast(
@@ -3551,6 +5187,71 @@
     function clearFormErrors() {
       setFieldError(el.nameInput, el.nameError, '');
       setFieldError(el.imageInput, el.imageError, '');
+    }
+
+    function insertMathSnippet(kind) {
+      const textarea = el.descInput;
+      const start = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : textarea.value.length;
+      const end = typeof textarea.selectionEnd === 'number' ? textarea.selectionEnd : start;
+      const selected = textarea.value.slice(start, end);
+
+      let insert = '';
+      let caretStart = 0;
+      let caretEnd = 0;
+
+      if (kind === 'inline') {
+        if (selected) {
+          insert = '$' + selected + '$';
+          caretStart = insert.length;
+          caretEnd = insert.length;
+        } else {
+          insert = '$ $';
+          caretStart = 1;
+          caretEnd = 1;
+        }
+      } else if (kind === 'block') {
+        if (selected) {
+          insert = '$$\n' + selected + '\n$$';
+          caretStart = insert.length;
+          caretEnd = insert.length;
+        } else {
+          insert = '$$\n\n$$';
+          caretStart = 3;
+          caretEnd = 3;
+        }
+      } else if (kind === 'fraction') {
+        if (selected) {
+          insert = '\\frac{' + selected + '}{}';
+          caretStart = insert.indexOf('}{') + 2;
+          caretEnd = caretStart;
+        } else {
+          insert = '\\frac{分子}{分母}';
+          const numerator = insert.indexOf('分子');
+          caretStart = numerator;
+          caretEnd = numerator + 2;
+        }
+      } else if (kind === 'superscript') {
+        if (selected) {
+          insert = '^{' + selected + '}';
+          caretStart = insert.length;
+          caretEnd = insert.length;
+        } else {
+          insert = '^{}';
+          caretStart = 2;
+          caretEnd = 2;
+        }
+      } else {
+        return;
+      }
+
+      textarea.focus({ preventScroll: true });
+      if (typeof textarea.setRangeText === 'function') {
+        textarea.setRangeText(insert, start, end, 'end');
+      } else {
+        textarea.value = textarea.value.slice(0, start) + insert + textarea.value.slice(end);
+      }
+      textarea.setSelectionRange(start + caretStart, start + caretEnd);
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function setFormMode(mode, entry) {
@@ -3598,7 +5299,7 @@
 
       const editingId = editingEntryId;
       const name = normalizeName(el.nameInput.value);
-      const desc = el.descInput.value.trim().slice(0, 12000);
+      const desc = el.descInput.value.trim().slice(0, MAX_DESC_LENGTH);
       const imageUrl = el.imageInput.value.trim();
 
       if (!name) {
@@ -3657,6 +5358,7 @@
       };
 
       entries.push(newEntry);
+      currentPage = Math.ceil(entries.length / PAGE_SIZE);
       const saved = persist();
 
       el.searchInput.value = '';
@@ -3771,6 +5473,7 @@
       });
 
       const saved = added ? persist() : true;
+      currentPage = 1;
       el.searchInput.value = '';
       closeModal(el.importModal);
       applySearch();
@@ -3789,6 +5492,7 @@
       if (!pendingImport) return;
       entries = pendingImport.entries.map((entry) => ({ ...entry }));
       const count = entries.length;
+      currentPage = 1;
       const saved = persist();
       el.searchInput.value = '';
       closeModal(el.importModal);
@@ -3857,7 +5561,7 @@
        事件绑定
        ============================================================ */
     function bindEvents() {
-      el.searchInput.addEventListener('input', applySearch);
+      el.searchInput.addEventListener('input', handleSearchChanged);
 
       el.searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
@@ -3872,12 +5576,46 @@
       el.searchClear.addEventListener('click', clearSearch);
       el.searchEmptyClear.addEventListener('click', clearSearch);
 
+      el.prevPageBtn.addEventListener('click', () => goToPage(currentPage - 1));
+      el.nextPageBtn.addEventListener('click', () => goToPage(currentPage + 1));
+
       el.addBtn.addEventListener('click', openAddForm);
       el.emptyAddBtn.addEventListener('click', openAddForm);
       el.resetDataBtn.addEventListener('click', clearLocalData);
       el.importBtn.addEventListener('click', () => el.fileInput.click());
       el.exportBtn.addEventListener('click', exportBackup);
       el.fileInput.addEventListener('change', handleFileSelected);
+
+      el.settingsBtn.addEventListener('click', () => {
+        syncAppearanceUI();
+        openModal(el.settingsModal, el.settingsClose);
+      });
+      el.settingsClose.addEventListener('click', () => closeModal(el.settingsModal));
+      el.settingsDoneBtn.addEventListener('click', () => closeModal(el.settingsModal));
+
+      document.querySelectorAll('[data-bg-preset]').forEach((button) => {
+        button.addEventListener('click', () => setBackgroundPreset(button.dataset.bgPreset));
+      });
+
+      document.querySelectorAll('[data-bubble-style]').forEach((button) => {
+        button.addEventListener('click', () => setBubbleStyle(button.dataset.bubbleStyle));
+      });
+
+      el.applyWallpaperBtn.addEventListener('click', applyWallpaperUrl);
+      el.wallpaperUrl.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          applyWallpaperUrl();
+        }
+      });
+      el.uploadWallpaperBtn.addEventListener('click', () => el.wallpaperInput.click());
+      el.wallpaperInput.addEventListener('change', (event) => {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = '';
+        if (file) handleWallpaperUpload(file);
+      });
+      el.clearWallpaperBtn.addEventListener('click', clearWallpaper);
+      el.messageOk.addEventListener('click', () => closeModal(el.messageModal));
 
       el.canvas.addEventListener('pointermove', (event) => {
         if (event.pointerType === 'touch') return;
@@ -3894,11 +5632,12 @@
       });
 
       el.canvas.addEventListener('click', (event) => {
+        if (focusState || modalStack.length) return;
         const rect = el.canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         const bubble = findBubbleAt(x, y);
-        if (bubble) openDetail(bubble.id);
+        if (bubble) focusBubbleAndOpen(bubble.id);
       });
 
       el.detailClose.addEventListener('click', () => closeModal(el.detailModal));
@@ -3908,6 +5647,11 @@
       el.formClose.addEventListener('click', () => closeModal(el.formModal));
       el.formCancel.addEventListener('click', () => closeModal(el.formModal));
       el.addForm.addEventListener('submit', handleAddSubmit);
+
+      document.querySelectorAll('[data-math-insert]').forEach((button) => {
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', () => insertMathSnippet(button.dataset.mathInsert));
+      });
 
       el.nameInput.addEventListener('input', () => {
         el.nameCount.textContent = Array.from(el.nameInput.value).length + ' / 40';
@@ -3952,6 +5696,10 @@
         if (event.key === 'Escape') {
           if (modalStack.length) {
             closeModal(modalStack[modalStack.length - 1]);
+            return;
+          }
+          if (focusState) {
+            clearBubbleFocus();
             return;
           }
           if (document.activeElement === el.searchInput) {
@@ -4017,6 +5765,7 @@
       const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
       el.searchKbd.textContent = isMac ? '⌘ K' : 'Ctrl K';
 
+      initAppearance();
       initData();
       bindEvents();
       resizeScene();
