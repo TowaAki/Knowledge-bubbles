@@ -1,0 +1,3933 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E0F2FE">
+<meta name="description" content="知识气泡（Knowledge Bubbles）——一个基于纯前端、无需后端的可视化名词知识库。">
+<title>知识气泡 · Knowledge Bubbles</title>
+<style>
+  /* ============ 基础 ============ */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --bg: #E0F2FE;
+    --ink: #1E293B;
+    --muted: #64748B;
+    --paper: #F8FAFC;
+    --line: #E2E8F0;
+    --sky: #38BDF8;
+    --mint: #A7F3D0;
+    --lemon: #FEF08A;
+    --pink: #FBCFE8;
+    --violet: #DDD6FE;
+    --font: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", system-ui, sans-serif;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    color: #1E293B;
+    font-family: var(--font);
+    background:
+      radial-gradient(62% 58% at 8% 4%, rgba(255, 255, 255, .78), transparent 66%),
+      radial-gradient(52% 50% at 92% 12%, rgba(219, 234, 254, .55), transparent 70%),
+      radial-gradient(54% 46% at 76% 96%, rgba(186, 230, 253, .28), transparent 72%),
+      linear-gradient(135deg, #E0F2FE 0%, #F4FAFF 48%, #FFFFFF 100%);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: radial-gradient(rgba(37, 99, 235, .16) 1px, transparent 1.1px);
+    background-size: 30px 30px;
+    opacity: .28;
+    -webkit-mask-image: radial-gradient(ellipse 78% 72% at 50% 48%, #000 12%, transparent 78%);
+    mask-image: radial-gradient(ellipse 78% 72% at 50% 48%, #000 12%, transparent 78%);
+  }
+
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 42%, transparent 54%, rgba(186, 230, 253, .34) 100%);
+  }
+
+  button, input, textarea { font: inherit; }
+  button { cursor: pointer; }
+  img { display: block; }
+  ::selection { background: rgba(56, 189, 248, .24); color: #0F172A; }
+
+  :focus-visible {
+    outline: 2px solid var(--sky);
+    outline-offset: 3px;
+  }
+
+  /* ============ 环境光 ============ */
+  .aurora {
+    position: fixed;
+    inset: -15%;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    filter: blur(90px);
+    opacity: .38;
+  }
+
+  .aurora span {
+    position: absolute;
+    display: block;
+    width: 40vw;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    will-change: transform;
+  }
+
+  .aurora .orb-a {
+    left: -4%;
+    top: 4%;
+    background: #BAE6FD;
+    animation: driftA 26s ease-in-out infinite alternate;
+  }
+
+  .aurora .orb-b {
+    right: -2%;
+    top: 8%;
+    background: #DBEAFE;
+    opacity: .78;
+    animation: driftB 31s ease-in-out infinite alternate;
+  }
+
+  .aurora .orb-c {
+    left: 36%;
+    bottom: -20%;
+    background: #E0F2FE;
+    opacity: .62;
+    animation: driftC 35s ease-in-out infinite alternate;
+  }
+
+  @keyframes driftA {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to   { transform: translate3d(9vw, 8vh, 0) scale(1.12); }
+  }
+
+  @keyframes driftB {
+    from { transform: translate3d(0, 0, 0) scale(1.08); }
+    to   { transform: translate3d(-10vw, 12vh, 0) scale(.94); }
+  }
+
+  @keyframes driftC {
+    from { transform: translate3d(0, 0, 0) scale(.96); }
+    to   { transform: translate3d(8vw, -9vh, 0) scale(1.14); }
+  }
+
+  /* ============ 舞台 ============ */
+  .stage {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  #bubbleCanvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: manipulation;
+  }
+
+  /* ============ 玻璃气泡 ============ */
+  .bubble-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .bubble {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: block;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    pointer-events: auto;
+    cursor: pointer;
+    opacity: 0;
+    transform-origin: 50% 50%;
+    will-change: transform, opacity;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    --bubble-rgb: 186, 230, 253;
+    --bubble-shadow: rgba(30, 64, 175, .16);
+    --bubble-shadow-hover: rgba(30, 64, 175, .28);
+  }
+
+  .bubble-core {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, .82);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .52), transparent 23%),
+      linear-gradient(145deg, rgba(var(--bubble-rgb), .46), rgba(var(--bubble-rgb), .66));
+    box-shadow:
+      inset 0 0 20px rgba(255, 255, 255, .52),
+      inset 0 1px 0 rgba(255, 255, 255, .88),
+      0 10px 24px var(--bubble-shadow);
+    -webkit-backdrop-filter: blur(4px) saturate(1.08);
+    backdrop-filter: blur(4px) saturate(1.08);
+    transform: scale(1);
+    transform-origin: 50% 50%;
+    transition:
+      transform .22s cubic-bezier(.22, 1, .36, 1),
+      box-shadow .22s ease,
+      border-color .22s ease;
+  }
+
+  .bubble-core::after {
+    content: "";
+    position: absolute;
+    left: 22%;
+    top: 13%;
+    width: 27%;
+    height: 14%;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .52);
+    filter: blur(2px);
+    transform: rotate(-32deg);
+    pointer-events: none;
+  }
+
+  .bubble:hover .bubble-core,
+  .bubble:focus-visible .bubble-core {
+    transform: translateY(-2px) scale(1.055);
+    border-color: rgba(255, 255, 255, .98);
+    box-shadow:
+      inset 0 0 24px rgba(255, 255, 255, .66),
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 16px 34px var(--bubble-shadow-hover);
+  }
+
+  .bubble:focus-visible { outline: none; }
+
+  .bubble:focus-visible .bubble-core {
+    outline: 2px solid rgba(2, 132, 199, .55);
+    outline-offset: 4px;
+  }
+
+  .bubble.is-match { z-index: 20; }
+
+  .bubble.is-match .bubble-core {
+    border-color: rgba(255, 255, 255, .98);
+    box-shadow:
+      inset 0 0 22px rgba(255, 255, 255, .68),
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      0 0 0 6px rgba(255, 255, 255, .42),
+      0 0 30px rgba(14, 165, 233, .30),
+      0 16px 34px var(--bubble-shadow-hover);
+  }
+
+  .bubble:hover { z-index: 30; }
+
+  .bubble-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 82%;
+    color: #1E293B;
+    font-weight: 750;
+    line-height: 1.22;
+    text-align: center;
+    text-shadow: 0 0 4px #fff;
+    pointer-events: none;
+  }
+
+  .bubble-line {
+    display: block;
+    white-space: nowrap;
+  }
+
+  .stage-ui {
+    position: fixed;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .count-pill {
+    left: 24px;
+    bottom: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 13px;
+    border: 1px solid rgba(148, 163, 184, .24);
+    border-radius: 999px;
+    color: #475569;
+    background: rgba(255, 255, 255, .78);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, .06), inset 0 1px 0 rgba(255, 255, 255, .9);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    transition: opacity .25s ease, transform .25s ease;
+  }
+
+  .count-pill .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #38BDF8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, .75);
+    animation: pulseDot 2.4s ease-in-out infinite;
+  }
+
+  .count-pill b { color: #0F172A; font-weight: 700; }
+
+  .reset-data-btn {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 23px;
+    flex: 0 0 auto;
+    margin-left: 1px;
+    padding: 0;
+    border: 0;
+    border-left: 1px solid rgba(148, 163, 184, .25);
+    border-radius: 0 7px 7px 0;
+    color: #94A3B8;
+    background: transparent;
+    pointer-events: auto;
+    transition: color .18s ease, background .18s ease;
+  }
+
+  .reset-data-btn:hover {
+    color: #DC2626;
+    background: rgba(239, 68, 68, .08);
+  }
+
+  .reset-data-btn:active { transform: scale(.94); }
+
+  @keyframes pulseDot {
+    0%, 100% { opacity: .55; transform: scale(.9); }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
+
+  .stage-hint {
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    height: 34px;
+    padding: 0 14px;
+    border: 1px solid rgba(148, 163, 184, .22);
+    border-radius: 999px;
+    color: #475569;
+    background: rgba(255, 255, 255, .78);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, .05), inset 0 1px 0 rgba(255, 255, 255, .9);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    font-size: 12px;
+    white-space: nowrap;
+    transition: opacity .25s ease, transform .25s ease;
+  }
+
+  .stage-hint .hint-ring {
+    width: 15px;
+    height: 15px;
+    border: 1px solid rgba(14, 165, 233, .58);
+    border-radius: 50%;
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .stage-hint .hint-ring::after {
+    content: "";
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #0284C7;
+    left: 5px;
+    top: 5px;
+  }
+
+  .stage-ui.is-hidden {
+    opacity: 0;
+    transform: translateY(6px);
+    visibility: hidden;
+  }
+
+  .stage-hint.is-hidden { transform: translate(-50%, 6px); }
+
+  /* ============ 空状态 / 搜索空状态 ============ */
+  .empty-state {
+    position: fixed;
+    z-index: 6;
+    inset: 110px 0 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: opacity .45s ease, transform .45s ease, visibility .45s;
+    pointer-events: none;
+  }
+
+  .empty-state.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+
+  .empty-visual {
+    position: relative;
+    width: 126px;
+    height: 126px;
+    margin-bottom: 26px;
+    border: 1px solid rgba(255, 255, 255, .82);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 34% 28%, rgba(255, 255, 255, .86), transparent 22%),
+      radial-gradient(circle at 40% 34%, rgba(186, 230, 253, .95), rgba(125, 211, 252, .46) 54%, rgba(219, 234, 254, .34) 75%);
+    box-shadow: 0 24px 60px rgba(37, 99, 235, .14), 0 0 0 1px rgba(255, 255, 255, .45) inset;
+  }
+
+  .empty-visual::before,
+  .empty-visual::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, .26);
+  }
+
+  .empty-visual::before {
+    width: 15px;
+    height: 15px;
+    right: 5px;
+    top: 16px;
+    background: rgba(125, 211, 252, .9);
+  }
+
+  .empty-visual::after {
+    width: 9px;
+    height: 9px;
+    left: 4px;
+    bottom: 24px;
+    background: rgba(56, 189, 248, .72);
+  }
+
+  .empty-visual .plus {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: rgba(15, 23, 42, .72);
+    font-size: 36px;
+    font-weight: 300;
+  }
+
+  .empty-state h2 {
+    margin: 0 0 9px;
+    color: #0F172A;
+    font-size: clamp(22px, 3vw, 28px);
+    font-weight: 800;
+    letter-spacing: -.02em;
+  }
+
+  .empty-state p {
+    max-width: 360px;
+    margin: 0 0 22px;
+    color: #64748B;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  .empty-state .btn { pointer-events: auto; }
+
+  .search-empty {
+    position: fixed;
+    z-index: 7;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -46%) scale(.98);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    width: min(340px, calc(100vw - 40px));
+    padding: 22px 24px;
+    border: 1px solid rgba(255, 255, 255, .92);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .86);
+    box-shadow: 0 20px 55px rgba(37, 99, 235, .14), 0 0 0 1px rgba(148, 163, 184, .10);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
+    text-align: center;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease, visibility .25s;
+  }
+
+  .search-empty.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .search-empty .search-empty-icon {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    margin-bottom: 2px;
+    border-radius: 50%;
+    color: #0284C7;
+    background: #E0F2FE;
+    border: 1px solid rgba(56, 189, 248, .22);
+  }
+
+  .search-empty p {
+    margin: 0;
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .search-empty p strong { color: #0F172A; }
+
+  .search-empty button {
+    margin-top: 3px;
+    border: 0;
+    background: none;
+    color: #0284C7;
+    font-size: 12.5px;
+    font-weight: 650;
+    padding: 4px 8px;
+    border-radius: 8px;
+  }
+
+  .search-empty button:hover { background: rgba(56, 189, 248, .10); }
+
+  /* ============ 顶部导航 ============ */
+  .topbar {
+    position: fixed;
+    z-index: 40;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    width: min(1280px, calc(100vw - 36px));
+    padding: 11px 13px 11px 17px;
+    border: 1px solid rgba(226, 232, 240, .9);
+    border-radius: 22px;
+    background: #FFFFFF;
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, .05),
+      0 12px 36px rgba(56, 189, 248, .05),
+      inset 0 1px 0 rgba(255, 255, 255, .9);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    backdrop-filter: blur(24px) saturate(140%);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  .brand-mark {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    border: 1px solid #DBEAFE;
+    border-radius: 13px;
+    background: linear-gradient(145deg, #F8FCFF, #EFF8FF);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 4px 12px rgba(56, 189, 248, .08);
+  }
+
+  .brand-mark i {
+    position: absolute;
+    display: block;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .40);
+  }
+
+  .brand-mark i:nth-child(1) {
+    width: 15px;
+    height: 15px;
+    left: 6px;
+    top: 7px;
+    background: #BAE6FD;
+  }
+
+  .brand-mark i:nth-child(2) {
+    width: 9px;
+    height: 9px;
+    right: 6px;
+    top: 5px;
+    background: #BAE6FD;
+  }
+
+  .brand-mark i:nth-child(3) {
+    width: 12px;
+    height: 12px;
+    right: 7px;
+    bottom: 5px;
+    background: #38BDF8;
+  }
+
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    line-height: 1;
+  }
+
+  .brand-text strong {
+    color: #0F172A;
+    font-size: 14px;
+    font-weight: 750;
+    letter-spacing: .01em;
+    white-space: nowrap;
+  }
+
+  .brand-text span {
+    color: #94A3B8;
+    font-size: 8.5px;
+    font-weight: 650;
+    letter-spacing: .19em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .search-shell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1 1 300px;
+    max-width: 520px;
+    height: 42px;
+    margin-left: 4px;
+    padding: 0 8px 0 13px;
+    border: 1px solid #EEF2F7;
+    border-radius: 14px;
+    background: #F3F4F6;
+    transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+
+  .search-shell:focus-within {
+    background: #FFFFFF;
+    border-color: rgba(56, 189, 248, .58);
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, .12);
+  }
+
+  .search-shell > svg {
+    flex: 0 0 auto;
+    color: #94A3B8;
+  }
+
+  #searchInput {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0 9px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #111827;
+    font-size: 13px;
+    letter-spacing: .01em;
+  }
+
+  #searchInput::placeholder { color: #9CA3AF; }
+
+  #searchInput::-webkit-search-cancel-button,
+  #searchInput::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+
+  .search-kbd {
+    flex: 0 0 auto;
+    padding: 3px 6px;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    background: #FFFFFF;
+    color: #6B7280;
+    font-size: 9.5px;
+    font-weight: 650;
+    letter-spacing: .04em;
+    white-space: nowrap;
+  }
+
+  .search-clear {
+    display: none;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    color: #6B7280;
+    background: #E5E7EB;
+  }
+
+  .search-clear:hover { color: #111827; background: #D1D5DB; }
+
+  .search-shell.has-query .search-kbd { display: none; }
+  .search-shell.has-query .search-clear { display: grid; }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 40px;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    font-size: 12.5px;
+    font-weight: 650;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease, color .18s ease;
+  }
+
+  .btn svg { flex: 0 0 auto; }
+  .btn:active { transform: translateY(0) scale(.98); }
+
+  .btn-ghost {
+    color: #374151;
+    background: #FFFFFF;
+    border-color: #E5E7EB;
+  }
+
+  .btn-ghost:hover {
+    color: #0F172A;
+    background: #F8FAFC;
+    border-color: #D1D5DB;
+    transform: translateY(-1px);
+  }
+
+  .btn-primary {
+    color: #0F172A;
+    background: linear-gradient(135deg, #E0F2FE 0%, #DBEAFE 60%, #EFF6FF 100%);
+    border-color: #BFDBFE;
+    box-shadow:
+      0 7px 18px rgba(56, 189, 248, .16),
+      inset 0 1px 0 rgba(255, 255, 255, .9);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, #BAE6FD 0%, #DBEAFE 62%, #EFF6FF 100%);
+    box-shadow:
+      0 11px 26px rgba(56, 189, 248, .24),
+      inset 0 1px 0 rgba(255, 255, 255, .96);
+  }
+
+  /* ============ 模态框通用 ============ */
+  .modal-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 22px;
+    background: rgba(30, 64, 175, .14);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .28s ease, visibility .28s;
+  }
+
+  .modal-layer.is-open {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .modal-card {
+    position: relative;
+    width: 100%;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid rgba(255, 255, 255, .9);
+    box-shadow: 0 34px 90px rgba(15, 23, 42, .22);
+    opacity: 0;
+    transform: translateY(18px) scale(.975);
+    transition: transform .42s cubic-bezier(.22, 1, .36, 1), opacity .28s ease;
+  }
+
+  .modal-layer.is-open .modal-card {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .icon-x {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    color: rgba(30, 41, 59, .65);
+    background: rgba(15, 23, 42, .05);
+    transition: background .18s ease, color .18s ease, transform .18s ease;
+  }
+
+  .icon-x:hover {
+    color: #0F172A;
+    background: rgba(15, 23, 42, .09);
+    transform: rotate(4deg);
+  }
+
+  .eyebrow {
+    margin: 0;
+    color: #64748B;
+    font-size: 9.5px;
+    font-weight: 750;
+    letter-spacing: .20em;
+    text-transform: uppercase;
+  }
+
+  /* ============ 详情卡 ============ */
+  #detailModal { z-index: 50; }
+
+  .detail-card {
+    width: min(820px, 100%);
+    max-height: min(90vh, 900px);
+    max-height: min(90dvh, 900px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 28px;
+  }
+
+  .detail-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .detail-cover {
+    position: relative;
+    height: clamp(190px, 30vh, 270px);
+    overflow: hidden;
+    background-color: #E2E8F0;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+  }
+
+  .detail-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.01);
+    transition: transform .8s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .detail-cover:hover img { transform: scale(1.035); }
+
+  .detail-cover .cover-tint {
+    position: absolute;
+    inset: 0;
+    mix-blend-mode: soft-light;
+    opacity: .35;
+    pointer-events: none;
+  }
+
+  .detail-cover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(2, 6, 23, .05) 0%, transparent 38%, rgba(2, 6, 23, .16) 100%);
+  }
+
+  .cover-badge {
+    position: absolute;
+    z-index: 2;
+    left: 18px;
+    top: 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 29px;
+    padding: 0 11px;
+    border: 1px solid rgba(255, 255, 255, .24);
+    border-radius: 999px;
+    color: rgba(255, 255, 255, .90);
+    background: rgba(15, 23, 42, .42);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .16em;
+  }
+
+  .cover-badge .color-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #BAE6FD;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, .20);
+  }
+
+  .cover-close {
+    position: absolute;
+    z-index: 3;
+    right: 16px;
+    top: 15px;
+    width: 38px;
+    height: 38px;
+    color: #fff;
+    background: rgba(15, 23, 42, .40);
+    border-color: rgba(255, 255, 255, .18);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+
+  .cover-close:hover {
+    color: #fff;
+    background: rgba(15, 23, 42, .62);
+  }
+
+  .detail-content {
+    padding: 30px 44px 36px;
+  }
+
+  .detail-content .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .detail-content .eyebrow span {
+    color: #94A3B8;
+    font-weight: 600;
+    letter-spacing: .12em;
+  }
+
+  #detailTitle {
+    margin: 10px 0 0;
+    color: #0F172A;
+    font-size: clamp(38px, 6vw, 58px);
+    font-weight: 820;
+    line-height: 1.13;
+    letter-spacing: -.045em;
+    word-break: break-word;
+  }
+
+  .title-rule {
+    width: 100%;
+    height: 3px;
+    margin: 22px 0 24px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #E2E8F0;
+  }
+
+  .title-rule span {
+    display: block;
+    width: 80px;
+    height: 100%;
+    border-radius: inherit;
+    background: #BAE6FD;
+    transition: width .45s ease;
+  }
+
+  .detail-card:hover .title-rule span { width: 130px; }
+
+  .detail-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex: 0 0 auto;
+    padding: 13px 30px;
+    border-top: 1px solid rgba(226, 232, 240, .9);
+    background: rgba(255, 255, 255, .74);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+
+  .detail-footnote {
+    color: #94A3B8;
+    font-size: 10.5px;
+    letter-spacing: .01em;
+  }
+
+  .btn-danger {
+    height: 36px;
+    padding: 0 13px;
+    border: 1px solid rgba(239, 68, 68, .16);
+    border-radius: 10px;
+    color: #DC2626;
+    background: rgba(239, 68, 68, .055);
+    font-size: 11.5px;
+  }
+
+  .btn-danger:hover {
+    color: #B91C1C;
+    background: rgba(239, 68, 68, .10);
+    border-color: rgba(239, 68, 68, .26);
+  }
+
+  /* ============ Markdown ============ */
+  .markdown {
+    color: #334155;
+    font-size: 14.5px;
+    line-height: 1.92;
+    word-break: break-word;
+  }
+
+  .markdown > :first-child { margin-top: 0; }
+  .markdown > :last-child { margin-bottom: 0; }
+
+  .markdown p { margin: 0 0 14px; }
+
+  .markdown h1,
+  .markdown h2,
+  .markdown h3,
+  .markdown h4 {
+    margin: 26px 0 11px;
+    color: #0F172A;
+    font-weight: 780;
+    line-height: 1.4;
+    letter-spacing: -.018em;
+  }
+
+  .markdown h1 { font-size: 24px; }
+  .markdown h2 { font-size: 20px; }
+  .markdown h3 { font-size: 16.5px; }
+  .markdown h4 { font-size: 15px; }
+
+  .markdown strong { color: #0F172A; font-weight: 750; }
+  .markdown em { color: #475569; }
+
+  .markdown a {
+    color: #0284C7;
+    text-decoration: underline;
+    text-decoration-color: rgba(2, 132, 199, .25);
+    text-underline-offset: 3px;
+  }
+
+  .markdown a:hover { text-decoration-color: currentColor; }
+
+  .markdown ul,
+  .markdown ol {
+    margin: 0 0 15px;
+    padding-left: 22px;
+  }
+
+  .markdown li { margin: 5px 0; padding-left: 2px; }
+  .markdown li::marker { color: #38BDF8; }
+
+  .markdown blockquote {
+    margin: 18px 0;
+    padding: 13px 17px;
+    border-left: 3px solid #7DD3FC;
+    border-radius: 0 12px 12px 0;
+    background: linear-gradient(90deg, rgba(224, 242, 254, .85), rgba(248, 250, 252, .3));
+    color: #475569;
+  }
+
+  .markdown blockquote p { margin: 0; }
+
+  .markdown code {
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: #E8EEF5;
+    color: #0F172A;
+    font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    font-size: .88em;
+  }
+
+  .markdown pre {
+    margin: 18px 0;
+    padding: 16px 18px;
+    overflow-x: auto;
+    border-radius: 13px;
+    background: #0F172A;
+    color: #E2E8F0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+  }
+
+  .markdown pre code {
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 12.5px;
+    line-height: 1.7;
+  }
+
+  .markdown hr {
+    height: 1px;
+    margin: 26px 0;
+    border: 0;
+    background: #E2E8F0;
+  }
+
+  .md-empty { color: #94A3B8; font-style: italic; }
+
+  /* ============ 表单卡 ============ */
+  #formModal { z-index: 60; }
+
+  .form-card {
+    width: min(620px, 100%);
+    max-height: min(92vh, 920px);
+    max-height: min(92dvh, 920px);
+    overflow-y: auto;
+    padding: 27px 28px 26px;
+    border-radius: 26px;
+    overscroll-behavior: contain;
+  }
+
+  .form-head {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    margin-bottom: 24px;
+  }
+
+  .form-mark {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    border-radius: 14px;
+    color: #0F172A;
+    background: linear-gradient(145deg, #BAE6FD, #DBEAFE 60%, #EFF6FF);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 8px 18px rgba(56, 189, 248, .16);
+    font-size: 24px;
+    font-weight: 300;
+    line-height: 1;
+  }
+
+  .form-head h2 {
+    margin: 4px 0 0;
+    color: #0F172A;
+    font-size: 23px;
+    font-weight: 800;
+    letter-spacing: -.025em;
+  }
+
+  .form-head .icon-x { margin-left: auto; }
+
+  .field { margin-bottom: 19px; }
+
+  .field-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .field label {
+    display: block;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .015em;
+  }
+
+  .field label em {
+    color: #F43F5E;
+    font-style: normal;
+  }
+
+  .field label .optional {
+    margin-left: 5px;
+    color: #94A3B8;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .04em;
+  }
+
+  .char-count {
+    color: #94A3B8;
+    font-size: 9.5px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .04em;
+  }
+
+  .field input,
+  .field textarea {
+    width: 100%;
+    border: 1px solid #E2E8F0;
+    border-radius: 13px;
+    outline: 0;
+    background: #fff;
+    color: #1E293B;
+    font-size: 13.5px;
+    line-height: 1.65;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, .025);
+    transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+
+  .field input {
+    height: 46px;
+    padding: 0 14px;
+  }
+
+  .field textarea {
+    min-height: 132px;
+    padding: 12px 14px;
+    resize: vertical;
+  }
+
+  .field input::placeholder,
+  .field textarea::placeholder { color: #B4C0D0; }
+
+  .field input:focus,
+  .field textarea:focus {
+    border-color: #7DD3FC;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(125, 211, 252, .13);
+  }
+
+  .field input.invalid,
+  .field textarea.invalid {
+    border-color: #FCA5A5;
+    box-shadow: 0 0 0 4px rgba(248, 113, 113, .09);
+  }
+
+  .field-error {
+    display: none;
+    margin: 6px 2px 0;
+    color: #DC2626;
+    font-size: 10.5px;
+    line-height: 1.5;
+  }
+
+  .field-error.show { display: block; }
+
+  .field-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 7px 2px 0;
+    color: #94A3B8;
+    font-size: 10.5px;
+    line-height: 1.6;
+  }
+
+  .field-hint svg { flex: 0 0 auto; margin-top: 2px; }
+
+  .color-line {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 2px 0 22px;
+    color: #94A3B8;
+    font-size: 10.5px;
+  }
+
+  .swatches { display: flex; gap: 5px; }
+
+  .swatches i {
+    display: block;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    border: 1px solid rgba(15, 23, 42, .06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55);
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    padding-top: 4px;
+  }
+
+  .btn-cancel {
+    color: #64748B;
+    background: #fff;
+    border-color: #E2E8F0;
+  }
+
+  .btn-cancel:hover {
+    color: #1E293B;
+    background: #F1F5F9;
+    border-color: #CBD5E1;
+  }
+
+  .btn-save {
+    color: #F8FAFC;
+    background: #0F172A;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .18);
+  }
+
+  .btn-save:hover {
+    background: #1E293B;
+    transform: translateY(-1px);
+    box-shadow: 0 11px 24px rgba(15, 23, 42, .24);
+  }
+
+  /* ============ 导入卡 ============ */
+  #importModal { z-index: 70; }
+
+  .import-card {
+    width: min(520px, 100%);
+    max-height: min(90vh, 840px);
+    max-height: min(90dvh, 840px);
+    overflow-y: auto;
+    padding: 27px 28px;
+    border-radius: 24px;
+  }
+
+  .import-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .import-mark {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    border-radius: 13px;
+    color: #0369A1;
+    background: #E0F2FE;
+    border: 1px solid rgba(56, 189, 248, .18);
+  }
+
+  .import-head h2 {
+    margin: 3px 0 0;
+    color: #0F172A;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+  }
+
+  .import-head .icon-x { margin-left: auto; }
+
+  .import-lead {
+    margin: 0 0 13px;
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .import-lead strong {
+    color: #0F172A;
+    font-size: 18px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .file-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 11px;
+    margin-bottom: 13px;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    background: #fff;
+    color: #64748B;
+    font-size: 10.5px;
+    word-break: break-all;
+  }
+
+  .file-chip svg { flex: 0 0 auto; color: #0EA5E9; }
+
+  .import-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    min-height: 0;
+    margin-bottom: 13px;
+  }
+
+  .import-chip {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: var(--chip, #E0F2FE);
+    color: #334155;
+    font-size: 10.5px;
+    font-weight: 600;
+  }
+
+  .import-chip.more {
+    color: #64748B;
+    background: #F1F5F9;
+  }
+
+  .import-note {
+    margin: 0 0 14px;
+    color: #64748B;
+    font-size: 10.5px;
+    line-height: 1.7;
+  }
+
+  .import-warning {
+    display: flex;
+    gap: 8px;
+    padding: 11px 12px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(245, 158, 11, .18);
+    border-radius: 11px;
+    background: rgba(254, 243, 199, .48);
+    color: #92400E;
+    font-size: 10.5px;
+    line-height: 1.7;
+  }
+
+  .import-warning svg { flex: 0 0 auto; margin-top: 1px; }
+
+  .import-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .btn-merge {
+    color: #075985;
+    background: #E0F2FE;
+    border-color: rgba(14, 165, 233, .12);
+  }
+
+  .btn-merge:hover {
+    background: #BAE6FD;
+    transform: translateY(-1px);
+  }
+
+  .btn-overwrite {
+    color: #B91C1C;
+    background: #FEF2F2;
+    border-color: rgba(239, 68, 68, .16);
+  }
+
+  .btn-overwrite:hover {
+    background: #FEE2E2;
+    border-color: rgba(239, 68, 68, .28);
+    transform: translateY(-1px);
+  }
+
+  /* ============ 二次确认 ============ */
+  #confirmModal { z-index: 80; }
+
+  .confirm-card {
+    width: min(420px, 100%);
+    padding: 28px 28px 24px;
+    border-radius: 24px;
+    text-align: center;
+  }
+
+  .confirm-mark {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 15px;
+    border: 1px solid rgba(239, 68, 68, .14);
+    border-radius: 50%;
+    color: #DC2626;
+    background: #FEF2F2;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .confirm-card h2 {
+    margin: 0 0 9px;
+    color: #0F172A;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+  }
+
+  .confirm-card p {
+    margin: 0 0 22px;
+    color: #64748B;
+    font-size: 12.5px;
+    line-height: 1.75;
+  }
+
+  .confirm-card p strong { color: #0F172A; }
+
+  .confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 9px;
+  }
+
+  .confirm-actions .btn { min-width: 104px; }
+
+  /* ============ Toast ============ */
+  .toast-stack {
+    position: fixed;
+    z-index: 200;
+    left: 50%;
+    bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: min(420px, calc(100vw - 32px));
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .toast {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    max-width: 100%;
+    min-height: 42px;
+    padding: 9px 11px 9px 12px;
+    border: 1px solid rgba(226, 232, 240, .95);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, .94);
+    box-shadow: 0 14px 36px rgba(15, 23, 42, .12), inset 0 1px 0 rgba(255, 255, 255, .95);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    color: #334155;
+    font-size: 12px;
+    line-height: 1.5;
+    opacity: 0;
+    transform: translateY(10px) scale(.98);
+    transition: opacity .22s ease, transform .22s ease;
+    pointer-events: auto;
+  }
+
+  .toast.show { opacity: 1; transform: none; }
+  .toast.leaving { opacity: 0; transform: translateY(8px) scale(.98); }
+
+  .toast-icon {
+    display: grid;
+    place-items: center;
+    width: 23px;
+    height: 23px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+  }
+
+  .toast.success .toast-icon { color: #047857; background: #D1FAE5; }
+  .toast.error .toast-icon { color: #B91C1C; background: #FEE2E2; }
+  .toast.info .toast-icon { color: #0369A1; background: #E0F2FE; }
+
+  .toast-message { flex: 1; min-width: 0; }
+
+  .toast-action {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border: 0;
+    border-radius: 7px;
+    color: #0369A1;
+    background: #E0F2FE;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .toast-action:hover { background: #BAE6FD; }
+
+  /* ============ 滚动条 ============ */
+  .detail-scroll,
+  .form-card,
+  .import-card {
+    scrollbar-width: thin;
+    scrollbar-color: #CBD5E1 transparent;
+  }
+
+  .detail-scroll::-webkit-scrollbar,
+  .form-card::-webkit-scrollbar,
+  .import-card::-webkit-scrollbar { width: 8px; }
+
+  .detail-scroll::-webkit-scrollbar-track,
+  .form-card::-webkit-scrollbar-track,
+  .import-card::-webkit-scrollbar-track { background: transparent; }
+
+  .detail-scroll::-webkit-scrollbar-thumb,
+  .form-card::-webkit-scrollbar-thumb,
+  .import-card::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: #CBD5E1;
+    background-clip: padding-box;
+  }
+
+  /* ============ 响应式 ============ */
+  @media (max-width: 1080px) {
+    .brand-text span { display: none; }
+    .topbar { gap: 12px; }
+  }
+
+  @media (max-width: 840px) {
+    .topbar {
+      top: 10px;
+      width: calc(100vw - 20px);
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 18px;
+    }
+
+    .brand { order: 1; }
+    .actions { order: 2; margin-left: auto; gap: 6px; }
+    .search-shell {
+      order: 3;
+      flex: 1 0 100%;
+      max-width: none;
+      height: 40px;
+      margin-left: 0;
+    }
+
+    .btn { height: 38px; padding: 0 11px; }
+    .btn-ghost .btn-label { display: none; }
+    .btn-primary .btn-label { display: inline; }
+
+    .count-pill { left: 14px; bottom: 14px; }
+    .stage-hint { display: none; }
+    .toast-stack { bottom: 62px; }
+
+    .detail-card {
+      width: 90vw;
+      max-width: 600px;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .brand { gap: 8px; }
+    .brand-mark { width: 34px; height: 34px; border-radius: 11px; }
+    .brand-mark i:nth-child(1) { width: 13px; height: 13px; left: 5px; top: 6px; }
+    .brand-mark i:nth-child(2) { width: 8px; height: 8px; right: 5px; top: 4px; }
+    .brand-mark i:nth-child(3) { width: 10px; height: 10px; right: 6px; bottom: 5px; }
+    .brand-text strong { font-size: 12.5px; }
+
+    .btn { height: 36px; padding: 0 10px; font-size: 12px; border-radius: 10px; }
+    .btn svg { width: 15px; height: 15px; }
+    .search-shell { height: 38px; border-radius: 12px; }
+    .search-kbd { display: none; }
+
+    .count-pill { height: 30px; padding: 0 11px; font-size: 10.5px; }
+    .stage-hint { display: none; }
+
+    .modal-layer { padding: 10px; }
+    .detail-card { border-radius: 22px; max-height: 94dvh; }
+    .detail-cover { height: 178px; }
+    .cover-close { top: 11px; right: 11px; }
+    .cover-badge { left: 12px; top: 12px; }
+    .detail-content { padding: 22px 22px 27px; }
+    #detailTitle { font-size: clamp(32px, 11vw, 44px); }
+    .detail-footer { padding: 11px 18px; }
+    .detail-footnote { display: none; }
+    .btn-danger { margin-left: auto; }
+
+    .form-card,
+    .import-card { padding: 21px 18px; border-radius: 20px; }
+    .form-head { margin-bottom: 20px; }
+    .form-head h2 { font-size: 20px; }
+    .form-mark { width: 40px; height: 40px; border-radius: 12px; }
+    .form-actions { flex-wrap: wrap; }
+    .form-actions .btn { flex: 1 1 auto; }
+    .import-actions .btn { flex: 1 1 auto; }
+    .confirm-card { padding: 24px 20px 21px; border-radius: 20px; }
+
+    .empty-state { inset: 112px 0 50px; }
+    .empty-visual { width: 104px; height: 104px; margin-bottom: 20px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .aurora span,
+    .count-pill .status-dot { animation: none; }
+    .detail-cover img,
+    .modal-card,
+    .toast,
+    .empty-state,
+    .search-empty { transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true">
+    <span class="orb-a"></span>
+    <span class="orb-b"></span>
+    <span class="orb-c"></span>
+  </div>
+
+  <main class="stage" id="stage" aria-label="名词知识库气泡图">
+    <canvas id="bubbleCanvas" aria-hidden="true"></canvas>
+    <div class="bubble-layer" id="bubbleLayer" aria-label="知识名词气泡"></div>
+  </main>
+
+  <div class="stage-ui count-pill is-hidden" id="countPill">
+    <span class="status-dot"></span>
+    <span id="countText">0 个名词</span>
+    <button class="reset-data-btn" id="resetDataBtn" type="button" title="清空本地数据" aria-label="清空本地数据">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="m6 7 1 12h10l1-12"/><path d="M9 7V4h6v3"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="stage-ui stage-hint" id="stageHint">
+    <span class="hint-ring"></span>
+    <span>点击气泡查看释义 · 支持 Markdown</span>
+  </div>
+
+  <section class="empty-state" id="emptyState" aria-live="polite">
+    <div class="empty-visual" aria-hidden="true"><span class="plus">+</span></div>
+    <h2>知识库还是空的</h2>
+    <p>把一个概念放进气泡里，让它成为这片晴空里第一颗会呼吸的星星。</p>
+    <button class="btn btn-primary" id="emptyAddBtn" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      添加第一个名词
+    </button>
+  </section>
+
+  <aside class="search-empty" id="searchEmpty" aria-live="polite">
+    <span class="search-empty-icon" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+    </span>
+    <p>没有找到与 <strong id="searchEmptyTerm"></strong> 匹配的气泡</p>
+    <button type="button" id="searchEmptyClear">清除搜索</button>
+  </aside>
+
+  <header class="topbar" id="topbar">
+    <div class="brand" aria-label="名词知识库">
+      <div class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="brand-text">
+        <strong>知识气泡</strong>
+        <span>Knowledge Bubbles</span>
+      </div>
+    </div>
+
+    <div class="search-shell" id="searchShell">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>
+      </svg>
+      <input id="searchInput" type="search" placeholder="搜索名词或解释…" autocomplete="off" spellcheck="false" aria-label="搜索名词">
+      <span class="search-kbd" id="searchKbd">Ctrl K</span>
+      <button class="search-clear" id="searchClear" type="button" aria-label="清除搜索">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" id="importBtn" type="button" title="导入 JSON 数据" aria-label="导入数据">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"/><path d="m8 10 4 4 4-4"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg>
+        <span class="btn-label">导入数据</span>
+      </button>
+      <button class="btn btn-ghost" id="exportBtn" type="button" title="导出 JSON 备份" aria-label="导出备份">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="m8 8 4-4 4 4"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg>
+        <span class="btn-label">导出备份</span>
+      </button>
+      <button class="btn btn-primary" id="addBtn" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="btn-label">添加新词</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ 详情 ============ -->
+  <div class="modal-layer" id="detailModal" aria-hidden="true">
+    <article class="modal-card detail-card" role="dialog" aria-modal="true" aria-labelledby="detailTitle" tabindex="-1">
+      <div class="detail-scroll">
+        <div class="detail-cover" id="detailCover">
+          <img id="detailImage" alt="" decoding="async" referrerpolicy="no-referrer">
+          <div class="cover-tint" id="coverTint"></div>
+          <div class="cover-badge"><span class="color-dot" id="detailDot"></span> KNOWLEDGE CARD</div>
+          <button class="icon-x cover-close" id="detailClose" type="button" aria-label="关闭详情">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="detail-content">
+          <p class="eyebrow">名词释义 · <span id="detailIndex">01 / 05</span></p>
+          <h2 id="detailTitle">—</h2>
+          <div class="title-rule"><span id="detailRule"></span></div>
+          <div class="markdown" id="detailDesc"></div>
+        </div>
+      </div>
+      <footer class="detail-footer">
+        <span class="detail-footnote">内容仅保存在本机浏览器</span>
+        <button class="btn btn-danger" id="deleteEntryBtn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="m6 7 1 12h10l1-12"/><path d="M9 7V4h6v3"/></svg>
+          删除该词条
+        </button>
+      </footer>
+    </article>
+  </div>
+
+  <!-- ============ 添加 ============ -->
+  <div class="modal-layer" id="formModal" aria-hidden="true">
+    <section class="modal-card form-card" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+      <div class="form-head">
+        <div class="form-mark" aria-hidden="true">+</div>
+        <div>
+          <p class="eyebrow">NEW BUBBLE</p>
+          <h2 id="formTitle">添加新词</h2>
+        </div>
+        <button class="icon-x" id="formClose" type="button" aria-label="关闭添加表单">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <form id="addForm" novalidate>
+        <div class="field">
+          <div class="field-head">
+            <label for="nameInput">名词 <em>*</em></label>
+            <span class="char-count" id="nameCount">0 / 40</span>
+          </div>
+          <input id="nameInput" name="name" type="text" maxlength="40" placeholder="例如：扩散模型" autocomplete="off">
+          <p class="field-error" id="nameError"></p>
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="descInput">详细解释 <span class="optional">支持 Markdown</span></label>
+          </div>
+          <textarea id="descInput" name="desc" maxlength="12000" placeholder="写下它的定义、关键特征、应用场景……&#10;&#10;支持 **加粗**、- 列表、> 引用、`代码` 等格式。"></textarea>
+          <p class="field-hint">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+            <span>换行会被保留；也可以在详情里使用小标题和列表来组织内容。</span>
+          </p>
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="imageInput">配图链接 <span class="optional">可选</span></label>
+          </div>
+          <input id="imageInput" name="imageUrl" type="url" maxlength="2048" placeholder="https://images.example.com/cover.jpg" autocomplete="off">
+          <p class="field-error" id="imageError"></p>
+          <p class="field-hint">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z"/><circle cx="9" cy="10" r="1.5"/><path d="m20 15-4.5-4.5L8 18"/></svg>
+            <span>请填入网络图片链接，不要直接上传本地大图，以免撑爆浏览器缓存。</span>
+          </p>
+        </div>
+
+        <div class="color-line">
+          <span class="swatches" aria-hidden="true">
+            <i style="background:#BAE6FD"></i><i style="background:#A7F3D0"></i><i style="background:#FEF08A"></i><i style="background:#FBCFE8"></i><i style="background:#DDD6FE"></i>
+          </span>
+          气泡颜色将从马卡龙色板中自动分配
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-cancel" id="formCancel" type="button">取消</button>
+          <button class="btn btn-save" type="submit">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+            保存并生成气泡
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- ============ 导入 ============ -->
+  <div class="modal-layer" id="importModal" aria-hidden="true">
+    <section class="modal-card import-card" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+      <div class="import-head">
+        <div class="import-mark" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m8 10 4 4 4-4"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg>
+        </div>
+        <div>
+          <p class="eyebrow">IMPORT BACKUP</p>
+          <h2 id="importTitle">导入知识库</h2>
+        </div>
+        <button class="icon-x" id="importClose" type="button" aria-label="关闭导入">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <p class="import-lead">已读取 <strong id="importCount">0</strong> 个有效词条，请选择导入方式。</p>
+      <div class="file-chip" id="importFileName">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>
+        <span>knowledge_backup.json</span>
+      </div>
+      <div class="import-preview" id="importPreview"></div>
+      <p class="import-note" id="importNote"></p>
+
+      <div class="import-warning">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"/></svg>
+        <span>合并会跳过同名名词；覆盖会清空当前知识库并替换为文件中的内容。</span>
+      </div>
+
+      <div class="import-actions">
+        <button class="btn btn-cancel" id="importCancel" type="button">取消</button>
+        <button class="btn btn-merge" id="mergeImportBtn" type="button">合并导入</button>
+        <button class="btn btn-overwrite" id="overwriteImportBtn" type="button">覆盖导入</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ 删除确认 ============ -->
+  <div class="modal-layer" id="confirmModal" aria-hidden="true">
+    <section class="modal-card confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="confirm-mark" aria-hidden="true">!</div>
+      <h2 id="confirmTitle">删除这个名词？</h2>
+      <p>「<strong id="confirmName"></strong>」将从知识库中移除。删除后仍可在提示条中撤销。</p>
+      <div class="confirm-actions">
+        <button class="btn btn-cancel" id="confirmCancel" type="button">再想想</button>
+        <button class="btn btn-overwrite" id="confirmDelete" type="button">确认删除</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="false"></div>
+  <input type="file" id="fileInput" accept=".json,application/json" hidden>
+
+  <script>
+  (() => {
+    'use strict';
+
+    /* ============================================================
+       常量与状态
+       ============================================================ */
+    const STORAGE_KEY = 'knowledge-bubble-library-v1';
+    const MAX_FILE_SIZE = 4 * 1024 * 1024;
+    const FONT_STACK = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", sans-serif';
+    const PALETTE = [
+      '#BAE6FD', '#7DD3FC', '#E0F2FE',
+      '#A7F3D0', '#D1FAE5',
+      '#FEF08A', '#FEF9C3',
+      '#FBCFE8', '#FCE7F3',
+      '#DDD6FE', '#EDE9FE'
+    ];
+
+    const $ = (selector, root = document) => root.querySelector(selector);
+
+    const el = {
+      stage: $('#stage'),
+      topbar: $('#topbar'),
+      canvas: $('#bubbleCanvas'),
+      bubbleLayer: $('#bubbleLayer'),
+      countPill: $('#countPill'),
+      countText: $('#countText'),
+      resetDataBtn: $('#resetDataBtn'),
+      stageHint: $('#stageHint'),
+      emptyState: $('#emptyState'),
+      emptyAddBtn: $('#emptyAddBtn'),
+      searchEmpty: $('#searchEmpty'),
+      searchEmptyTerm: $('#searchEmptyTerm'),
+      searchEmptyClear: $('#searchEmptyClear'),
+      searchShell: $('#searchShell'),
+      searchInput: $('#searchInput'),
+      searchKbd: $('#searchKbd'),
+      searchClear: $('#searchClear'),
+      addBtn: $('#addBtn'),
+      importBtn: $('#importBtn'),
+      exportBtn: $('#exportBtn'),
+      fileInput: $('#fileInput'),
+
+      detailModal: $('#detailModal'),
+      detailCover: $('#detailCover'),
+      detailImage: $('#detailImage'),
+      coverTint: $('#coverTint'),
+      detailDot: $('#detailDot'),
+      detailIndex: $('#detailIndex'),
+      detailTitle: $('#detailTitle'),
+      detailRule: $('#detailRule'),
+      detailDesc: $('#detailDesc'),
+      detailClose: $('#detailClose'),
+      deleteEntryBtn: $('#deleteEntryBtn'),
+
+      formModal: $('#formModal'),
+      formClose: $('#formClose'),
+      addForm: $('#addForm'),
+      formCancel: $('#formCancel'),
+      nameInput: $('#nameInput'),
+      nameCount: $('#nameCount'),
+      nameError: $('#nameError'),
+      descInput: $('#descInput'),
+      imageInput: $('#imageInput'),
+      imageError: $('#imageError'),
+
+      importModal: $('#importModal'),
+      importClose: $('#importClose'),
+      importCancel: $('#importCancel'),
+      importCount: $('#importCount'),
+      importFileName: $('#importFileName'),
+      importPreview: $('#importPreview'),
+      importNote: $('#importNote'),
+      mergeImportBtn: $('#mergeImportBtn'),
+      overwriteImportBtn: $('#overwriteImportBtn'),
+
+      confirmModal: $('#confirmModal'),
+      confirmName: $('#confirmName'),
+      confirmCancel: $('#confirmCancel'),
+      confirmDelete: $('#confirmDelete'),
+
+      toastStack: $('#toastStack')
+    };
+
+    const ctx = el.canvas.getContext('2d');
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    let entries = [];
+    let bubbles = [];
+    const bubbleElements = new Map();
+    let query = '';
+    let currentDetailId = null;
+    let pendingImport = null;
+    let pendingDeleteId = null;
+    let modalStack = [];
+    let storageAvailable = true;
+
+    const view = {
+      w: 1,
+      h: 1,
+      dpr: 1,
+      bounds: { left: 24, right: 1, top: 120, bottom: 1 }
+    };
+
+    const pointer = { x: 0, y: 0, active: false };
+    let hoverCheck = 0;
+    let time = 0;
+    let lastFrame = performance.now();
+    let resizeQueued = false;
+    let reduceMotion = reducedMotionQuery.matches;
+
+    /* ============================================================
+       工具函数
+       ============================================================ */
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function easeOutCubic(t) {
+      const n = clamp(t, 0, 1);
+      return 1 - Math.pow(1 - n, 3);
+    }
+
+    function uid() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+      }
+      return 'kb-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+    }
+
+    function hashString(value) {
+      let hash = 2166136261;
+      const text = String(value || '');
+      for (let i = 0; i < text.length; i += 1) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      return hash >>> 0;
+    }
+
+    function normalizeName(value) {
+      return String(value == null ? '' : value).replace(/\s+/g, ' ').trim().slice(0, 40);
+    }
+
+    function nameKey(value) {
+      return normalizeName(value).toLocaleLowerCase();
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function hexToRgb(hex) {
+      let value = String(hex || '').replace('#', '').trim();
+      if (value.length === 3) {
+        value = value.split('').map((part) => part + part).join('');
+      }
+      if (!/^[0-9a-f]{6}$/i.test(value)) return { r: 186, g: 230, b: 253 };
+      return {
+        r: parseInt(value.slice(0, 2), 16),
+        g: parseInt(value.slice(2, 4), 16),
+        b: parseInt(value.slice(4, 6), 16)
+      };
+    }
+
+    function rgba(hex, alpha) {
+      const rgb = hexToRgb(hex);
+      return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + clamp(alpha, 0, 1) + ')';
+    }
+
+    function mixHex(from, to, weight) {
+      const a = hexToRgb(from);
+      const b = hexToRgb(to);
+      const t = clamp(weight, 0, 1);
+      const toHex = (value) => Math.round(value).toString(16).padStart(2, '0');
+      return '#' +
+        toHex(a.r + (b.r - a.r) * t) +
+        toHex(a.g + (b.g - a.g) * t) +
+        toHex(a.b + (b.b - a.b) * t);
+    }
+
+    function pickPaletteColor() {
+      const last = entries.length ? entries[entries.length - 1].color : '';
+      const pool = PALETTE.filter((color) => color !== last);
+      return pool[Math.floor(Math.random() * pool.length)] || PALETTE[0];
+    }
+
+    function normalizeColor(value) {
+      if (typeof value !== 'string') return pickPaletteColor();
+      const upper = value.trim().toUpperCase();
+      return PALETTE.includes(upper) ? upper : pickPaletteColor();
+    }
+
+    function sanitizeImageUrl(value) {
+      if (typeof value !== 'string') return '';
+      const url = value.trim();
+      if (!url || url.length > 2048) return '';
+      return /^https?:\/\//i.test(url) ? url : '';
+    }
+
+    function isNetworkUrl(value) {
+      return /^https?:\/\/[^\s]+$/i.test(value.trim());
+    }
+
+    /* ============================================================
+       默认封面（离线可用，不依赖网络）
+       ============================================================ */
+    const DEFAULT_COVER_SVG = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820">
+        <defs>
+          <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#E0F2FE"/>
+            <stop offset=".52" stop-color="#F4FAFF"/>
+            <stop offset="1" stop-color="#FFFFFF"/>
+          </linearGradient>
+          <radialGradient id="g1" cx=".32" cy=".24" r=".72">
+            <stop offset="0" stop-color="#FFFFFF" stop-opacity=".9"/>
+            <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="1600" height="820" fill="url(#bg)"/>
+        <rect width="1600" height="820" fill="url(#g1)"/>
+        <circle cx="275" cy="145" r="255" fill="#BAE6FD" opacity=".52"/>
+        <circle cx="1365" cy="670" r="330" fill="#DBEAFE" opacity=".62"/>
+        <circle cx="1190" cy="120" r="128" fill="#7DD3FC" opacity=".30"/>
+        <circle cx="155" cy="705" r="92" fill="#E0F2FE" opacity=".88"/>
+        <circle cx="980" cy="690" r="62" fill="#BAE6FD" opacity=".46"/>
+        <g fill="none" stroke="#1E293B" stroke-opacity=".07" stroke-width="2">
+          <path d="M-60 610 C 240 430 470 700 760 548 S 1245 326 1660 500"/>
+          <path d="M-60 682 C 270 500 505 760 805 610 S 1280 398 1660 562"/>
+        </g>
+        <circle cx="800" cy="385" r="122" fill="#FFFFFF" fill-opacity=".18" stroke="#1E293B" stroke-opacity=".10" stroke-width="2"/>
+        <circle cx="744" cy="327" r="30" fill="#FFFFFF" opacity=".7"/>
+        <circle cx="890" cy="475" r="12" fill="#FFFFFF" opacity=".55"/>
+        <text x="800" y="398" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="44" font-weight="700" fill="#334155">暂无配图</text>
+        <text x="800" y="448" text-anchor="middle" font-family="Segoe UI,sans-serif" font-size="17" font-weight="600" letter-spacing="6" fill="#64748B">KNOWLEDGE BUBBLE</text>
+      </svg>
+    `;
+    const DEFAULT_COVER = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(DEFAULT_COVER_SVG);
+
+    /* ============================================================
+       预置数据
+       ============================================================ */
+    const SEED_ENTRIES = [
+      {
+        id: 'seed-deep-learning',
+        name: '深度学习',
+        color: '#BAE6FD',
+        imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1600&q=80',
+        desc: `**深度学习（Deep Learning）**是机器学习的一个分支，核心是用多层神经网络从数据中自动学习特征表示。
+
+### 核心特征
+- **端到端学习**：减少人工特征工程
+- **层次化表示**：从边缘、纹理到语义概念逐层抽象
+- **数据驱动**：数据规模与算力是重要支撑
+
+### 常见架构
+- **CNN**：擅长图像与局部模式
+- **RNN / LSTM**：处理序列与时间依赖
+- **Transformer**：以注意力机制处理长距离关系
+
+> 一句话理解：让机器自己学会“看什么、记什么、判断什么”。
+
+深度学习的边界也很清楚：它需要足够的数据、合理的任务定义，以及可解释性与算力成本之间的权衡。`
+      },
+      {
+        id: 'seed-neural-network',
+        name: '神经网络',
+        color: '#A7F3D0',
+        imageUrl: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1600&q=80',
+        desc: `**人工神经网络（Artificial Neural Network）**受生物神经元启发，由大量相互连接的节点组成，用来近似复杂的函数关系。
+
+### 基本结构
+- **输入层**：接收原始特征
+- **隐藏层**：逐层变换与抽象
+- **输出层**：给出预测结果
+
+### 训练过程
+1. **前向传播**：输入经过各层计算得到输出
+2. **计算损失**：衡量预测与真实目标的差距
+3. **反向传播**：利用梯度更新网络参数
+
+> 注意：深度学习的“深”，通常指隐藏层数量较多，而不是网络体积一定庞大。`
+      },
+      {
+        id: 'seed-reinforcement-learning',
+        name: '强化学习',
+        color: '#FEF08A',
+        imageUrl: '',
+        desc: `**强化学习（Reinforcement Learning, RL）**研究智能体如何通过与环境交互，在试错中学习最优策略。
+
+### 五个核心概念
+- **智能体 Agent**：做出决策的主体
+- **环境 Environment**：智能体所处的外部世界
+- **状态 State**：当前局面的描述
+- **动作 Action**：智能体可以采取的行为
+- **奖励 Reward**：环境对行为的反馈
+
+### 学习目标
+最大化长期累计奖励，而不是只追求单步收益。
+
+> 典型应用：游戏博弈、机器人控制、推荐系统与资源调度。`
+      },
+      {
+        id: 'seed-rag',
+        name: 'RAG',
+        color: '#FBCFE8',
+        imageUrl: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=1600&q=80',
+        desc: `**RAG（Retrieval-Augmented Generation，检索增强生成）**把外部知识检索与大模型生成结合起来，让回答更有依据。
+
+### 工作流程
+1. **索引**：把文档切块、向量化并写入向量库
+2. **检索**：根据问题召回最相关的片段
+3. **生成**：把检索结果作为上下文交给大模型回答
+
+### 价值
+- 降低幻觉与事实错误
+- 知识可以持续更新
+- 回答更容易溯源
+
+> RAG 不是“把资料塞进提示词”这么简单，切分策略、召回质量与重排同样关键。`
+      },
+      {
+        id: 'seed-attention',
+        name: '注意力机制',
+        color: '#DDD6FE',
+        imageUrl: '',
+        desc: `**注意力机制（Attention Mechanism）**让模型在处理当前信息时，动态决定应该关注哪些部分。
+
+### 直觉
+面对一句话时，我们不会平均地看每个词，而是会把注意力放在与当前任务最相关的位置。注意力机制把这种“选择性关注”变成了可学习的计算。
+
+### 缩放点积注意力
+\`Attention(Q, K, V) = softmax(QKᵀ / √dₖ)V\`
+
+- **Q** Query：当前要查询的信息
+- **K** Key：用来匹配的索引
+- **V** Value：真正被聚合的内容
+
+> 注意力机制是 Transformer 的核心组件之一，也是大语言模型处理长距离依赖的基础。`
+      }
+    ];
+
+    /* ============================================================
+       Markdown 安全渲染（零依赖，断网可用）
+       ============================================================ */
+    function renderInline(raw) {
+      const stash = [];
+      const keep = (html) => {
+        const token = '\u0000' + stash.length + '\u0000';
+        stash.push(html);
+        return token;
+      };
+
+      let text = escapeHtml(raw);
+
+      text = text.replace(/`([^`\n]+)`/g, (_, code) => keep('<code>' + code + '</code>'));
+
+      text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, url) => {
+        return keep('<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + label + '</a>');
+      });
+
+      text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
+      text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+
+      return text.replace(/\u0000(\d+)\u0000/g, (_, index) => stash[Number(index)] || '');
+    }
+
+    function isBlockStart(line) {
+      return /^\s*(```|#{1,6}\s|>\s?|[-*+]\s+|\d+[.)]\s+|([-*_])(?:\s*\2){2,}\s*$)/.test(line);
+    }
+
+    function renderMarkdown(markdown) {
+      const source = String(markdown == null ? '' : markdown).replace(/\r\n?/g, '\n').trim();
+      if (!source) return '<p class="md-empty">暂无详细解释。</p>';
+
+      const lines = source.split('\n');
+      const output = [];
+      let i = 0;
+
+      while (i < lines.length) {
+        const line = lines[i];
+
+        if (/^\s*$/.test(line)) {
+          i += 1;
+          continue;
+        }
+
+        const fence = line.match(/^\s*```([A-Za-z0-9_-]*)\s*$/);
+        if (fence) {
+          i += 1;
+          const code = [];
+          while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) {
+            code.push(lines[i]);
+            i += 1;
+          }
+          if (i < lines.length) i += 1;
+          output.push('<pre><code>' + escapeHtml(code.join('\n')) + '</code></pre>');
+          continue;
+        }
+
+        const heading = line.match(/^\s*(#{1,6})\s+(.*)$/);
+        if (heading) {
+          const level = Math.min(heading[1].length, 4);
+          output.push('<h' + level + '>' + renderInline(heading[2]) + '</h' + level + '>');
+          i += 1;
+          continue;
+        }
+
+        if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) {
+          output.push('<hr>');
+          i += 1;
+          continue;
+        }
+
+        if (/^\s*>\s?/.test(line)) {
+          const quote = [];
+          while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
+            quote.push(lines[i].replace(/^\s*>\s?/, ''));
+            i += 1;
+          }
+          output.push('<blockquote>' + quote.map(renderInline).join('<br>') + '</blockquote>');
+          continue;
+        }
+
+        if (/^\s*[-*+]\s+/.test(line)) {
+          const items = [];
+          while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) {
+            items.push(lines[i].replace(/^\s*[-*+]\s+/, ''));
+            i += 1;
+          }
+          output.push('<ul>' + items.map((item) => '<li>' + renderInline(item) + '</li>').join('') + '</ul>');
+          continue;
+        }
+
+        if (/^\s*\d+[.)]\s+/.test(line)) {
+          const items = [];
+          while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) {
+            items.push(lines[i].replace(/^\s*\d+[.)]\s+/, ''));
+            i += 1;
+          }
+          output.push('<ol>' + items.map((item) => '<li>' + renderInline(item) + '</li>').join('') + '</ol>');
+          continue;
+        }
+
+        const paragraph = [];
+        while (i < lines.length && !/^\s*$/.test(lines[i]) && !isBlockStart(lines[i])) {
+          paragraph.push(lines[i]);
+          i += 1;
+        }
+        if (!paragraph.length) {
+          paragraph.push(lines[i]);
+          i += 1;
+        }
+        output.push('<p>' + paragraph.map(renderInline).join('<br>') + '</p>');
+      }
+
+      return output.join('');
+    }
+
+    /* ============================================================
+       本地存储
+       ============================================================ */
+    try {
+      const probe = '__kb_storage_test__';
+      window.localStorage.setItem(probe, '1');
+      window.localStorage.removeItem(probe);
+    } catch (error) {
+      storageAvailable = false;
+    }
+
+    function normalizeEntry(raw, usedIds, usedNames) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+
+      const name = normalizeName(raw.name);
+      if (!name) return null;
+
+      const key = nameKey(name);
+      if (usedNames.has(key)) return null;
+      usedNames.add(key);
+
+      let id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim().slice(0, 100) : uid();
+      if (usedIds.has(id)) id = uid();
+      usedIds.add(id);
+
+      const desc = typeof raw.desc === 'string' ? raw.desc.replace(/\r\n?/g, '\n').slice(0, 12000) : '';
+      const imageUrl = sanitizeImageUrl(raw.imageUrl);
+      const color = normalizeColor(raw.color);
+
+      return { id, name, desc, imageUrl, color };
+    }
+
+    function normalizeEntries(list) {
+      if (!Array.isArray(list)) return [];
+      const usedIds = new Set();
+      const usedNames = new Set();
+      const result = [];
+      list.forEach((raw) => {
+        const entry = normalizeEntry(raw, usedIds, usedNames);
+        if (entry) result.push(entry);
+      });
+      return result;
+    }
+
+    function createSeedEntries() {
+      return normalizeEntries(SEED_ENTRIES.map((entry) => ({ ...entry })));
+    }
+
+    function readStorageSnapshot() {
+      if (!storageAvailable) {
+        return { state: 'unavailable', entries: [] };
+      }
+
+      let raw;
+      try {
+        raw = window.localStorage.getItem(STORAGE_KEY);
+      } catch (error) {
+        return { state: 'unavailable', entries: [] };
+      }
+
+      if (raw === null) {
+        return { state: 'missing', entries: [] };
+      }
+
+      try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+          return { state: 'invalid', raw, entries: [] };
+        }
+
+        const normalized = normalizeEntries(parsed);
+        if (normalized.length === 0 && parsed.length > 0) {
+          return { state: 'invalid', raw, entries: [] };
+        }
+
+        return { state: 'ok', entries: normalized };
+      } catch (error) {
+        return { state: 'invalid', raw, entries: [] };
+      }
+    }
+
+    function persist() {
+      if (!storageAvailable) return false;
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function initData() {
+      const snapshot = readStorageSnapshot();
+
+      // 关键保护：只有 localStorage 中完全不存在这个 key 时，才注入示例数据。
+      // 已经存在的空数组 []、用户数据、导入数据都不会被示例数据覆盖。
+      if (snapshot.state === 'missing') {
+        entries = createSeedEntries();
+        persist();
+        return;
+      }
+
+      if (snapshot.state === 'ok') {
+        entries = snapshot.entries;
+        return;
+      }
+
+      if (snapshot.state === 'unavailable') {
+        entries = createSeedEntries();
+        return;
+      }
+
+      // 数据损坏时不写入任何内容，避免覆盖用户原有的备份数据。
+      entries = [];
+      if (snapshot.raw) {
+        try {
+          window.localStorage.setItem(STORAGE_KEY + '-corrupt-' + Date.now(), snapshot.raw);
+        } catch (error) {
+          // 备份失败也绝不覆盖原 key。
+        }
+      }
+      window.setTimeout(() => {
+        showToast('本地数据读取失败，已保护原始数据并进入空库模式。请导入备份。', 'error');
+      }, 700);
+    }
+
+    function clearLocalData() {
+      if (!storageAvailable) {
+        showToast('浏览器本地存储不可用，无法清空数据', 'error');
+        return;
+      }
+
+      const confirmed = window.confirm(
+        '⚠️ 警告：此操作将清空当前浏览器内的所有知识条目！请确保已导出备份。是否继续？'
+      );
+      if (!confirmed) return;
+
+      try {
+        window.localStorage.setItem(STORAGE_KEY, '[]');
+        window.location.reload();
+      } catch (error) {
+        showToast('清空失败，请检查浏览器的本地存储权限', 'error');
+      }
+    }
+
+    /* ============================================================
+       气泡模型
+       ============================================================ */
+    function computeRadius(name, id) {
+      const width = view.w || window.innerWidth;
+      const chars = Array.from(name || '').length;
+      const viewportScale = width < 480 ? 0.72 : width < 700 ? 0.80 : width < 1060 ? 0.90 : 1;
+      const base = 54 + Math.min(chars, 14) * 4.2;
+      const jitter = 0.94 + (hashString(id) % 13) / 100;
+      const max = width < 480 ? 84 : width < 700 ? 96 : 112;
+      return clamp(base * viewportScale * jitter, 36, max);
+    }
+
+    function getBounds() {
+      const width = view.w || window.innerWidth;
+      const height = view.h || window.innerHeight;
+      const headerRect = el.topbar.getBoundingClientRect();
+      const side = width < 560 ? 15 : width < 900 ? 20 : 28;
+      const top = Math.max(headerRect.bottom + (width < 840 ? 16 : 24), 92);
+      const bottom = Math.max(top + 130, height - (width < 840 ? 42 : 60));
+      return {
+        left: side,
+        right: Math.max(side + 80, width - side),
+        top,
+        bottom: Math.min(bottom, height - 20)
+      };
+    }
+
+    function refreshBounds() {
+      view.bounds = getBounds();
+    }
+
+    function clampBubble(bubble) {
+      const b = view.bounds;
+      bubble.x = clamp(bubble.x, b.left + bubble.r, Math.max(b.left + bubble.r, b.right - bubble.r));
+      bubble.y = clamp(bubble.y, b.top + bubble.r, Math.max(b.top + bubble.r, b.bottom - bubble.r));
+    }
+
+    function spawnPosition(radius, existing, initialIndex = -1, initialTotal = 0) {
+      const b = view.bounds;
+      const minX = b.left + radius;
+      const maxX = b.right - radius;
+      const minY = b.top + radius;
+      const maxY = b.bottom - radius;
+
+      if (maxX <= minX || maxY <= minY) {
+        return { x: view.w / 2, y: (b.top + b.bottom) / 2 };
+      }
+
+      // 首次打开时用一圈轻微抖动的环形布局，让 3–8 个初始词条更均衡。
+      if (initialIndex >= 0 && initialTotal > 0 && initialTotal <= 8) {
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const ringX = (maxX - minX) * 0.33;
+        const ringY = (maxY - minY) * 0.30;
+        const angle = -Math.PI / 2 + (initialIndex / initialTotal) * Math.PI * 2 + rand(-0.12, 0.12);
+        return {
+          x: clamp(centerX + Math.cos(angle) * ringX, minX, maxX),
+          y: clamp(centerY + Math.sin(angle) * ringY, minY, maxY)
+        };
+      }
+
+      if (!existing.length) {
+        return { x: rand(minX, maxX), y: rand(minY, maxY) };
+      }
+
+      // 最佳候选采样：让初始气泡自然铺满画面，而不是随机挤在一角。
+      let best = { x: rand(minX, maxX), y: rand(minY, maxY) };
+      let bestScore = -Infinity;
+
+      for (let attempt = 0; attempt < 34; attempt += 1) {
+        const x = rand(minX, maxX);
+        const y = rand(minY, maxY);
+        let nearestGap = Infinity;
+
+        for (let i = 0; i < existing.length; i += 1) {
+          const other = existing[i];
+          const gap = Math.hypot(x - other.x, y - other.y) - radius - other.r;
+          if (gap < nearestGap) nearestGap = gap;
+        }
+
+        const edgeRoom = Math.min(x - minX, maxX - x, y - minY, maxY - y);
+        const score = nearestGap + edgeRoom * 0.035 + rand(0, 3.5);
+
+        if (score > bestScore) {
+          bestScore = score;
+          best = { x, y };
+        }
+      }
+
+      return best;
+    }
+
+    function measureLine(text, fontSize) {
+      ctx.font = '700 ' + fontSize + 'px ' + FONT_STACK;
+      return ctx.measureText(text).width;
+    }
+
+    function wrapName(text, maxWidth, fontSize) {
+      const source = String(text || '').replace(/\n+/g, ' ');
+      const tokens = source.match(/[A-Za-z0-9][A-Za-z0-9.'’+_\-]*|\s+|./gu) || [];
+      const lines = [];
+      let line = '';
+
+      const pushLine = () => {
+        const trimmed = line.trim();
+        if (trimmed) lines.push(trimmed);
+        line = '';
+      };
+
+      tokens.forEach((token) => {
+        if (/^\s+$/.test(token)) {
+          if (line) line += ' ';
+          return;
+        }
+
+        const candidate = line ? line + token : token;
+        if (measureLine(candidate, fontSize) <= maxWidth) {
+          line = candidate;
+          return;
+        }
+
+        if (line.trim()) {
+          pushLine();
+          if (measureLine(token, fontSize) <= maxWidth) {
+            line = token;
+            return;
+          }
+        }
+
+        let fragment = '';
+        Array.from(token).forEach((char) => {
+          const next = fragment + char;
+          if (measureLine(next, fontSize) <= maxWidth || !fragment) {
+            fragment = next;
+          } else {
+            lines.push(fragment);
+            fragment = char;
+          }
+        });
+        line = fragment;
+      });
+
+      pushLine();
+      return lines.length ? lines : [source];
+    }
+
+    function truncateLine(line, maxWidth, fontSize) {
+      let text = line;
+      while (text.length > 1 && measureLine(text + '…', fontSize) > maxWidth) {
+        text = text.slice(0, -1);
+      }
+      return text + '…';
+    }
+
+    function layoutBubbleText(bubble) {
+      const maxWidth = bubble.r * 1.55;
+      const chars = Array.from(bubble.name).length;
+      let startSize = bubble.r * (chars <= 3 ? 0.46 : 0.39);
+      startSize = clamp(startSize, 13, 32);
+
+      let chosen = null;
+
+      // 短名词优先保持单行，字号太小时再退回两行。
+      for (let size = startSize; size >= 11; size -= 0.5) {
+        const lines = wrapName(bubble.name, maxWidth, size);
+        if (lines.length === 1 && size >= 18) {
+          chosen = { size, lines };
+          break;
+        }
+      }
+
+      // 其次优先选择最多两行的方案，视觉更稳定。
+      if (!chosen) {
+        for (let size = startSize; size >= 11; size -= 0.5) {
+          const lines = wrapName(bubble.name, maxWidth, size);
+          if (lines.length <= 2) {
+            chosen = { size, lines };
+            break;
+          }
+        }
+      }
+
+      if (!chosen) {
+        for (let size = startSize; size >= 10; size -= 0.5) {
+          const lines = wrapName(bubble.name, maxWidth, size);
+          if (lines.length <= 3) {
+            chosen = { size, lines };
+            break;
+          }
+        }
+      }
+
+      if (!chosen) {
+        const size = 10;
+        const lines = wrapName(bubble.name, maxWidth, size).slice(0, 3);
+        if (lines.length === 3) {
+          lines[2] = truncateLine(lines[2], maxWidth, size);
+        }
+        chosen = { size, lines };
+      }
+
+      bubble.fontSize = chosen.size;
+      bubble.lines = chosen.lines.slice(0, 3);
+    }
+
+    function makeBubble(entry, existing, initialIndex, initial, initialTotal) {
+      const radius = computeRadius(entry.name, entry.id);
+      const pos = spawnPosition(radius, existing || [], initial ? initialIndex : -1, initial ? initialTotal : 0);
+      const phase = (hashString(entry.id) % 1000) / 1000 * Math.PI * 2;
+      const bubble = {
+        ...entry,
+        r: radius,
+        x: pos.x,
+        y: pos.y,
+        vx: rand(-0.035, 0.035),
+        vy: rand(-0.035, 0.035),
+        phase,
+        drift: 0.72 + (hashString(entry.id + '-drift') % 60) / 100,
+        breathPhase: (hashString(entry.id + '-breath') % 1000) / 1000 * Math.PI * 2,
+        breath: 0,
+        hover: 0,
+        wantHover: false,
+        alpha: 0,
+        targetAlpha: 1,
+        glow: 0,
+        targetGlow: 0,
+        enter: 0,
+        enterDelay: initial ? 70 + initialIndex * 55 : 0,
+        gradient: null,
+        gradientR: 0,
+        gradientColor: '',
+        rimGradient: null,
+        rimR: 0,
+        lines: [],
+        fontSize: 18
+      };
+      layoutBubbleText(bubble);
+      return bubble;
+    }
+
+    function rebuildBubbles(options = {}) {
+      const initial = Boolean(options.initial);
+      const oldMap = new Map(bubbles.map((bubble) => [bubble.id, bubble]));
+      const fresh = [];
+
+      entries.forEach((entry, index) => {
+        const old = oldMap.get(entry.id);
+        if (old) {
+          const radius = computeRadius(entry.name, entry.id);
+          old.name = entry.name;
+          old.desc = entry.desc;
+          old.imageUrl = entry.imageUrl;
+          old.color = entry.color;
+          if (old.r !== radius) {
+            old.r = radius;
+            old.gradient = null;
+            old.gradientR = 0;
+          }
+          layoutBubbleText(old);
+          clampBubble(old);
+          fresh.push(old);
+          return;
+        }
+
+        const bubble = makeBubble(entry, fresh, index, initial, entries.length);
+        clampBubble(bubble);
+        fresh.push(bubble);
+      });
+
+      bubbles = fresh.sort((a, b) => b.r - a.r);
+      applySearch();
+      syncBubbleElements();
+    }
+
+    /* ============================================================
+       玻璃气泡 DOM 渲染
+       ============================================================ */
+    function createBubbleElement(bubble) {
+      const node = document.createElement('button');
+      node.type = 'button';
+      node.className = 'bubble';
+      node.dataset.id = bubble.id;
+
+      const core = document.createElement('span');
+      core.className = 'bubble-core';
+
+      const text = document.createElement('span');
+      text.className = 'bubble-text';
+
+      core.appendChild(text);
+      node.appendChild(core);
+
+      node.addEventListener('click', (event) => {
+        event.stopPropagation();
+        openDetail(node.dataset.id);
+      });
+
+      bubble.el = node;
+      bubble.coreEl = core;
+      bubble.textEl = text;
+      bubble.textKey = '';
+      el.bubbleLayer.appendChild(node);
+      return node;
+    }
+
+    function updateBubbleElement(bubble) {
+      if (!bubble.el) return;
+
+      const rgb = hexToRgb(bubble.color);
+      const shadowTint = mixHex(bubble.color, '#0F172A', 0.24);
+
+      bubble.el.dataset.id = bubble.id;
+      bubble.el.style.setProperty('--bubble-rgb', rgb.r + ', ' + rgb.g + ', ' + rgb.b);
+      bubble.el.style.setProperty('--bubble-shadow', rgba(shadowTint, 0.16));
+      bubble.el.style.setProperty('--bubble-shadow-hover', rgba(shadowTint, 0.30));
+      bubble.el.style.width = (bubble.r * 2) + 'px';
+      bubble.el.style.height = (bubble.r * 2) + 'px';
+      bubble.el.setAttribute('aria-label', '查看「' + bubble.name + '」的详细解释');
+      bubble.el.classList.toggle('is-match', Boolean(query) && bubble.matched);
+
+      bubble.textEl.style.fontSize = bubble.fontSize + 'px';
+      const textKey = bubble.fontSize + '|' + bubble.lines.join('\u0000');
+      if (bubble.textKey !== textKey) {
+        bubble.textKey = textKey;
+        bubble.textEl.replaceChildren(...bubble.lines.map((line) => {
+          const span = document.createElement('span');
+          span.className = 'bubble-line';
+          span.textContent = line;
+          return span;
+        }));
+      }
+    }
+
+    function syncBubbleElements() {
+      const alive = new Set(bubbles.map((bubble) => bubble.id));
+
+      bubbleElements.forEach((node, id) => {
+        if (!alive.has(id)) {
+          node.remove();
+          bubbleElements.delete(id);
+        }
+      });
+
+      bubbles.forEach((bubble) => {
+        let node = bubbleElements.get(bubble.id);
+        if (!node) {
+          node = createBubbleElement(bubble);
+          bubbleElements.set(bubble.id, node);
+        } else {
+          bubble.el = node;
+          bubble.coreEl = node.firstElementChild;
+          bubble.textEl = bubble.coreEl.firstElementChild;
+        }
+        updateBubbleElement(bubble);
+      });
+    }
+
+    function renderBubbleElements() {
+      bubbles.forEach((bubble) => {
+        if (!bubble.el) return;
+        const enterScale = (0.70 + 0.30 * easeOutCubic(bubble.enter)) * (1 + bubble.breath);
+        bubble.el.style.transform =
+          'translate3d(' + (bubble.x - bubble.r).toFixed(2) + 'px,' +
+          (bubble.y - bubble.r).toFixed(2) + 'px,0) scale(' + enterScale.toFixed(4) + ')';
+        bubble.el.style.opacity = clamp(bubble.alpha * easeOutCubic(bubble.enter), 0, 1).toFixed(3);
+      });
+    }
+
+    /* ============================================================
+       物理与绘制
+       ============================================================ */
+    function updateHoverNow() {
+      if (!pointer.active || modalStack.length) {
+        bubbles.forEach((bubble) => { bubble.wantHover = false; });
+        el.canvas.style.cursor = 'default';
+        return;
+      }
+
+      const hit = findBubbleAt(pointer.x, pointer.y);
+      bubbles.forEach((bubble) => { bubble.wantHover = bubble === hit; });
+      el.canvas.style.cursor = hit ? 'pointer' : 'default';
+    }
+
+    function findBubbleAt(x, y) {
+      let found = null;
+      let closest = Infinity;
+
+      for (let i = 0; i < bubbles.length; i += 1) {
+        const bubble = bubbles[i];
+        if (bubble.enter < 0.25) continue;
+        const enterScale = 0.72 + 0.28 * easeOutCubic(bubble.enter);
+        const scale = enterScale * (1 + bubble.hover * 0.065) * (1 + bubble.breath);
+        const radius = bubble.r * scale;
+        const cx = bubble.x;
+        const cy = bubble.y - bubble.hover * 3;
+        const dx = x - cx;
+        const dy = y - cy;
+        const distance = dx * dx + dy * dy;
+        if (distance <= radius * radius && distance < closest) {
+          closest = distance;
+          found = bubble;
+        }
+      }
+
+      return found;
+    }
+
+    function resolveBounds(bubble) {
+      const b = view.bounds;
+      const left = b.left + bubble.r;
+      const right = b.right - bubble.r;
+      const top = b.top + bubble.r;
+      const bottom = b.bottom - bubble.r;
+
+      if (bubble.x < left) {
+        bubble.x = left;
+        bubble.vx = Math.abs(bubble.vx) * 0.32 + 0.02;
+      } else if (bubble.x > right) {
+        bubble.x = right;
+        bubble.vx = -Math.abs(bubble.vx) * 0.32 - 0.02;
+      }
+
+      if (bubble.y < top) {
+        bubble.y = top;
+        bubble.vy = Math.abs(bubble.vy) * 0.32 + 0.02;
+      } else if (bubble.y > bottom) {
+        bubble.y = bottom;
+        bubble.vy = -Math.abs(bubble.vy) * 0.32 - 0.02;
+      }
+    }
+
+    function resolveCollisions() {
+      for (let pass = 0; pass < 2; pass += 1) {
+        for (let i = 0; i < bubbles.length; i += 1) {
+          const a = bubbles[i];
+          for (let j = i + 1; j < bubbles.length; j += 1) {
+            const b = bubbles[j];
+            let dx = b.x - a.x;
+            let dy = b.y - a.y;
+            const minDistance = a.r + b.r + 5;
+            let distanceSq = dx * dx + dy * dy;
+
+            if (distanceSq >= minDistance * minDistance) continue;
+
+            let distance = Math.sqrt(distanceSq);
+            if (distance < 0.001) {
+              dx = rand(-1, 1);
+              dy = rand(-1, 1);
+              distance = Math.max(0.001, Math.sqrt(dx * dx + dy * dy));
+            }
+
+            const nx = dx / distance;
+            const ny = dy / distance;
+            const overlap = minDistance - distance;
+            const push = overlap * 0.36;
+
+            a.x -= nx * push;
+            a.y -= ny * push;
+            b.x += nx * push;
+            b.y += ny * push;
+
+            const relativeX = b.vx - a.vx;
+            const relativeY = b.vy - a.vy;
+            const normalVelocity = relativeX * nx + relativeY * ny;
+
+            if (normalVelocity < 0) {
+              const impulse = -(1.06 * normalVelocity) * 0.5;
+              a.vx -= nx * impulse;
+              a.vy -= ny * impulse;
+              b.vx += nx * impulse;
+              b.vy += ny * impulse;
+            }
+          }
+        }
+
+        bubbles.forEach(resolveBounds);
+      }
+    }
+
+    function simulate(dt) {
+      const frameScale = dt / 16.6667;
+      const driftFactor = reduceMotion ? 0.12 : 1;
+
+      bubbles.forEach((bubble) => {
+        if (bubble.enterDelay > 0) {
+          bubble.enterDelay -= dt;
+        } else {
+          bubble.enter += (1 - bubble.enter) * Math.min(1, dt / 290);
+        }
+
+        const hoverTarget = bubble.wantHover ? 1 : 0;
+        bubble.hover += (hoverTarget - bubble.hover) * Math.min(1, dt / 120);
+        bubble.alpha += (bubble.targetAlpha - bubble.alpha) * Math.min(1, dt / 190);
+        bubble.glow += (bubble.targetGlow - bubble.glow) * Math.min(1, dt / 150);
+        bubble.breath = Math.sin(time * 0.0009 + bubble.breathPhase) * 0.007;
+
+        const motionFactor = (0.35 + bubble.enter * 0.65) * driftFactor;
+        bubble.vx += Math.sin(time * 0.00052 * bubble.drift + bubble.phase) * 0.0030 * frameScale * motionFactor;
+        bubble.vy += Math.cos(time * 0.00046 * bubble.drift + bubble.phase * 1.7) * 0.0026 * frameScale * motionFactor;
+        bubble.vy -= 0.00020 * frameScale * motionFactor;
+
+        const damping = Math.pow(0.986, frameScale);
+        bubble.vx *= damping;
+        bubble.vy *= damping;
+
+        const speed = Math.hypot(bubble.vx, bubble.vy);
+        const maxSpeed = 0.38;
+        if (speed > maxSpeed) {
+          bubble.vx = (bubble.vx / speed) * maxSpeed;
+          bubble.vy = (bubble.vy / speed) * maxSpeed;
+        }
+
+        bubble.x += bubble.vx * frameScale;
+        bubble.y += bubble.vy * frameScale;
+        resolveBounds(bubble);
+      });
+
+      resolveCollisions();
+
+      hoverCheck += dt;
+      if (hoverCheck > 70) {
+        hoverCheck = 0;
+        updateHoverNow();
+      }
+    }
+
+    function getGradient(bubble) {
+      if (bubble.gradient && bubble.gradientR === bubble.r && bubble.gradientColor === bubble.color) {
+        return bubble.gradient;
+      }
+
+      const gradient = ctx.createRadialGradient(
+        -bubble.r * 0.34,
+        -bubble.r * 0.40,
+        bubble.r * 0.06,
+        0,
+        0,
+        bubble.r * 1.13
+      );
+      gradient.addColorStop(0, rgba(mixHex(bubble.color, '#FFFFFF', 0.76), 0.82));
+      gradient.addColorStop(0.44, rgba(mixHex(bubble.color, '#FFFFFF', 0.32), 0.68));
+      gradient.addColorStop(0.84, rgba(bubble.color, 0.59));
+      gradient.addColorStop(1, rgba(mixHex(bubble.color, '#0F172A', 0.025), 0.55));
+
+      bubble.gradient = gradient;
+      bubble.gradientR = bubble.r;
+      bubble.gradientColor = bubble.color;
+      return gradient;
+    }
+
+    function getRimGradient(bubble) {
+      if (bubble.rimGradient && bubble.rimR === bubble.r) {
+        return bubble.rimGradient;
+      }
+
+      const rim = ctx.createRadialGradient(0, 0, bubble.r * 0.62, 0, 0, bubble.r);
+      rim.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      rim.addColorStop(0.72, 'rgba(255, 255, 255, .02)');
+      rim.addColorStop(0.92, 'rgba(255, 255, 255, .20)');
+      rim.addColorStop(1, 'rgba(255, 255, 255, .52)');
+
+      bubble.rimGradient = rim;
+      bubble.rimR = bubble.r;
+      return rim;
+    }
+
+    function drawBubble(bubble) {
+      const enter = easeOutCubic(bubble.enter);
+      if (enter <= 0.002) return;
+
+      const alpha = clamp(bubble.alpha * enter, 0, 1);
+      if (alpha <= 0.012) return;
+
+      const scale = (0.70 + 0.30 * enter) * (1 + bubble.hover * 0.065) * (1 + bubble.breath);
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(bubble.x, bubble.y - bubble.hover * 3);
+      ctx.scale(scale, scale);
+
+      if (bubble.glow > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = alpha * bubble.glow;
+        ctx.beginPath();
+        ctx.arc(0, 0, bubble.r + 4.5, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, .96)';
+        ctx.lineWidth = 2.2;
+        ctx.shadowColor = 'rgba(14, 165, 233, .55)';
+        ctx.shadowBlur = 26;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (bubble.hover > 0.01) {
+        ctx.beginPath();
+        ctx.arc(0, 0, bubble.r + 2.5, 0, Math.PI * 2);
+        ctx.strokeStyle = rgba('#0EA5E9', 0.22 * bubble.hover);
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+      }
+
+      const shadowTint = mixHex(bubble.color, '#0F172A', 0.24);
+      ctx.shadowColor = rgba(shadowTint, bubble.hover > 0.04 ? 0.30 : 0.16);
+      ctx.shadowBlur = 17 + bubble.hover * 18;
+      ctx.shadowOffsetY = 9 + bubble.hover * 4;
+
+      ctx.beginPath();
+      ctx.arc(0, 0, bubble.r, 0, Math.PI * 2);
+      ctx.fillStyle = getGradient(bubble);
+      ctx.fill();
+
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      ctx.beginPath();
+      ctx.arc(0, 0, bubble.r - 0.6, 0, Math.PI * 2);
+      ctx.fillStyle = getRimGradient(bubble);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, bubble.r - 0.9, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, .92)';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, bubble.r - 3.1, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, .28)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.48;
+      ctx.beginPath();
+      ctx.ellipse(
+        -bubble.r * 0.31,
+        -bubble.r * 0.39,
+        bubble.r * 0.27,
+        bubble.r * 0.15,
+        -0.56,
+        0,
+        Math.PI * 2
+      );
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
+      ctx.restore();
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '700 ' + bubble.fontSize + 'px ' + FONT_STACK;
+      ctx.fillStyle = '#1E293B';
+      const lineHeight = bubble.fontSize * 1.24;
+      const startY = -((bubble.lines.length - 1) * lineHeight) / 2;
+      bubble.lines.forEach((line, index) => {
+        ctx.fillText(line, 0, startY + index * lineHeight);
+      });
+
+      ctx.restore();
+    }
+
+    function draw() {
+      renderBubbleElements();
+    }
+
+    function loop(now) {
+      const dt = clamp(now - lastFrame, 0, 50);
+      lastFrame = now;
+      time += dt;
+      simulate(dt);
+      draw();
+      window.requestAnimationFrame(loop);
+    }
+
+    /* ============================================================
+       画面尺寸
+       ============================================================ */
+    function resizeScene() {
+      const oldBounds = { ...view.bounds };
+      const oldWidth = oldBounds.right - oldBounds.left;
+      const oldHeight = oldBounds.bottom - oldBounds.top;
+
+      const rect = el.stage.getBoundingClientRect();
+      view.w = Math.max(1, rect.width);
+      view.h = Math.max(1, rect.height);
+      view.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      el.canvas.width = Math.round(view.w * view.dpr);
+      el.canvas.height = Math.round(view.h * view.dpr);
+      el.canvas.style.width = view.w + 'px';
+      el.canvas.style.height = view.h + 'px';
+      ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+
+      refreshBounds();
+      const nextBounds = view.bounds;
+      const nextWidth = nextBounds.right - nextBounds.left;
+      const nextHeight = nextBounds.bottom - nextBounds.top;
+
+      bubbles.forEach((bubble) => {
+        if (oldWidth > 20 && oldHeight > 20) {
+          const relativeX = clamp((bubble.x - oldBounds.left) / oldWidth, 0, 1);
+          const relativeY = clamp((bubble.y - oldBounds.top) / oldHeight, 0, 1);
+          bubble.x = nextBounds.left + relativeX * nextWidth;
+          bubble.y = nextBounds.top + relativeY * nextHeight;
+        }
+        bubble.r = computeRadius(bubble.name, bubble.id);
+        bubble.gradient = null;
+        layoutBubbleText(bubble);
+        clampBubble(bubble);
+      });
+
+      syncBubbleElements();
+    }
+
+    function scheduleResize() {
+      if (resizeQueued) return;
+      resizeQueued = true;
+      window.requestAnimationFrame(() => {
+        resizeQueued = false;
+        resizeScene();
+      });
+    }
+
+    /* ============================================================
+       搜索与界面状态
+       ============================================================ */
+    function applySearch() {
+      const term = el.searchInput.value.trim();
+      query = term;
+      const lowered = term.toLocaleLowerCase();
+      let matches = 0;
+
+      bubbles.forEach((bubble) => {
+        const isMatch = !lowered || (bubble.name + ' ' + bubble.desc).toLocaleLowerCase().includes(lowered);
+        bubble.matched = isMatch;
+        bubble.targetAlpha = !lowered ? 1 : (isMatch ? 1 : 0.14);
+        bubble.targetGlow = lowered && isMatch ? 1 : 0;
+        if (bubble.el) {
+          bubble.el.classList.toggle('is-match', Boolean(lowered) && isMatch);
+        }
+        if (isMatch) matches += 1;
+      });
+
+      el.searchShell.classList.toggle('has-query', Boolean(term));
+      el.searchEmpty.classList.toggle('is-visible', Boolean(term) && entries.length > 0 && matches === 0);
+      el.searchEmptyTerm.textContent = term.length > 18 ? term.slice(0, 18) + '…' : term;
+
+      if (!entries.length) {
+        el.countPill.classList.add('is-hidden');
+        el.stageHint.classList.add('is-hidden');
+      } else {
+        el.countPill.classList.remove('is-hidden');
+        el.stageHint.classList.toggle('is-hidden', Boolean(term));
+      }
+
+      if (!term) {
+        el.countText.textContent = entries.length + ' 个名词';
+      } else {
+        el.countText.textContent = matches + ' / ' + entries.length + ' 个匹配';
+      }
+
+      updateEmptyState();
+    }
+
+    function updateEmptyState() {
+      const isEmpty = entries.length === 0;
+      el.emptyState.classList.toggle('is-visible', isEmpty);
+      if (isEmpty) {
+        el.countPill.classList.add('is-hidden');
+        el.stageHint.classList.add('is-hidden');
+        el.searchEmpty.classList.remove('is-visible');
+      }
+    }
+
+    function clearSearch() {
+      if (!el.searchInput.value) return;
+      el.searchInput.value = '';
+      applySearch();
+      el.searchInput.focus({ preventScroll: true });
+    }
+
+    /* ============================================================
+       模态框
+       ============================================================ */
+    function openModal(modal, focusTarget) {
+      if (!modal || modal.classList.contains('is-open')) return;
+
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+      modalStack.push(modal);
+      document.body.classList.add('modal-open');
+      pointer.active = false;
+      bubbles.forEach((bubble) => { bubble.wantHover = false; });
+      el.canvas.style.cursor = 'default';
+
+      const target = focusTarget || modal.querySelector('button, input, textarea, [tabindex]:not([tabindex="-1"])');
+      if (target) {
+        try { target.focus({ preventScroll: true }); } catch (error) { target.focus(); }
+        window.setTimeout(() => {
+          try { target.focus({ preventScroll: true }); } catch (error) { target.focus(); }
+        }, 120);
+      }
+    }
+
+    function closeModal(modal) {
+      if (!modal) return;
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+      modalStack = modalStack.filter((item) => item !== modal);
+      if (!modalStack.length) document.body.classList.remove('modal-open');
+
+      if (modal === el.detailModal) currentDetailId = null;
+      if (modal === el.importModal) {
+        pendingImport = null;
+        el.importPreview.replaceChildren();
+      }
+      if (modal === el.confirmModal) pendingDeleteId = null;
+    }
+
+    function trapFocus(event, modal) {
+      const focusable = Array.from(modal.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )).filter((node) => node.offsetParent !== null || node === document.activeElement);
+
+      if (!focusable.length) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && (active === first || !modal.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !modal.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    /* ============================================================
+       详情
+       ============================================================ */
+    function openDetail(id) {
+      const entry = entries.find((item) => item.id === id);
+      if (!entry) return;
+
+      currentDetailId = id;
+      const index = entries.findIndex((item) => item.id === id);
+      const total = String(entries.length).padStart(2, '0');
+
+      el.detailTitle.textContent = entry.name;
+      el.detailDesc.innerHTML = renderMarkdown(entry.desc);
+      el.detailIndex.textContent = String(index + 1).padStart(2, '0') + ' / ' + total;
+      el.detailDot.style.background = entry.color;
+      el.detailRule.style.background = entry.color;
+      el.coverTint.style.background = entry.color;
+
+      el.detailImage.classList.remove('is-fallback');
+      el.detailCover.style.setProperty('--card-accent', entry.color);
+      el.detailCover.style.backgroundImage = 'url("' + DEFAULT_COVER + '")';
+
+      if (!entry.imageUrl) {
+        el.detailImage.onload = null;
+        el.detailImage.onerror = null;
+        el.detailImage.src = DEFAULT_COVER;
+        el.detailImage.classList.add('is-fallback');
+      } else {
+        el.detailImage.onload = () => {
+          el.detailImage.classList.remove('is-fallback');
+        };
+        el.detailImage.onerror = () => {
+          el.detailImage.onerror = null;
+          el.detailImage.src = DEFAULT_COVER;
+          el.detailImage.classList.add('is-fallback');
+        };
+        el.detailImage.src = entry.imageUrl;
+      }
+      el.detailImage.alt = entry.name + ' 配图';
+
+      openModal(el.detailModal, el.detailClose);
+    }
+
+    function requestDelete() {
+      if (!currentDetailId) return;
+      const entry = entries.find((item) => item.id === currentDetailId);
+      if (!entry) return;
+      pendingDeleteId = entry.id;
+      el.confirmName.textContent = entry.name;
+      openModal(el.confirmModal, el.confirmCancel);
+    }
+
+    function confirmDeleteEntry() {
+      if (!pendingDeleteId) return;
+      const index = entries.findIndex((item) => item.id === pendingDeleteId);
+      if (index < 0) {
+        closeModal(el.confirmModal);
+        return;
+      }
+
+      const removed = entries[index];
+      entries.splice(index, 1);
+      const undoRecord = { entry: removed, index };
+
+      const saved = persist();
+      closeModal(el.confirmModal);
+      closeModal(el.detailModal);
+      rebuildBubbles();
+
+      showToast(
+        saved ? '已删除「' + removed.name + '」' : '已删除，但本地保存失败',
+        saved ? 'success' : 'error',
+        {
+          label: '撤销',
+          onClick: () => undoDeleteRecord(undoRecord)
+        }
+      );
+    }
+
+    function undoDeleteRecord(record) {
+      if (!record || !record.entry) return;
+      if (entries.some((entry) => entry.id === record.entry.id)) return;
+
+      entries.splice(Math.min(record.index, entries.length), 0, record.entry);
+      const saved = persist();
+      rebuildBubbles();
+      showToast(
+        saved ? '已恢复「' + record.entry.name + '」' : '已恢复，但本地保存失败',
+        saved ? 'success' : 'error'
+      );
+    }
+
+    /* ============================================================
+       添加
+       ============================================================ */
+    function setFieldError(input, errorNode, message) {
+      errorNode.textContent = message || '';
+      errorNode.classList.toggle('show', Boolean(message));
+      input.classList.toggle('invalid', Boolean(message));
+    }
+
+    function clearFormErrors() {
+      setFieldError(el.nameInput, el.nameError, '');
+      setFieldError(el.imageInput, el.imageError, '');
+    }
+
+    function openAddForm() {
+      el.addForm.reset();
+      clearFormErrors();
+      el.nameCount.textContent = '0 / 40';
+      el.descInput.classList.remove('invalid');
+      openModal(el.formModal, el.nameInput);
+    }
+
+    function handleAddSubmit(event) {
+      event.preventDefault();
+      clearFormErrors();
+
+      const name = normalizeName(el.nameInput.value);
+      const desc = el.descInput.value.trim().slice(0, 12000);
+      const imageUrl = el.imageInput.value.trim();
+
+      if (!name) {
+        setFieldError(el.nameInput, el.nameError, '请先填写名词。');
+        el.nameInput.focus();
+        return;
+      }
+
+      if (entries.some((entry) => nameKey(entry.name) === nameKey(name))) {
+        setFieldError(el.nameInput, el.nameError, '知识库里已经有这个名词了。');
+        el.nameInput.focus();
+        return;
+      }
+
+      if (imageUrl && !isNetworkUrl(imageUrl)) {
+        setFieldError(el.imageInput, el.imageError, '请填写以 http:// 或 https:// 开头的网络图片链接。');
+        el.imageInput.focus();
+        return;
+      }
+
+      const newEntry = {
+        id: uid(),
+        name,
+        desc,
+        imageUrl: sanitizeImageUrl(imageUrl),
+        color: pickPaletteColor()
+      };
+
+      entries.push(newEntry);
+      const saved = persist();
+
+      el.searchInput.value = '';
+      applySearch();
+      rebuildBubbles();
+      closeModal(el.formModal);
+
+      showToast(
+        saved ? '新的气泡「' + name + '」已生成' : '已添加「' + name + '」，但本地保存失败',
+        saved ? 'success' : 'error'
+      );
+    }
+
+    /* ============================================================
+       删除
+       ============================================================ */
+
+    /* ============================================================
+       导入 / 导出
+       ============================================================ */
+    function exportBackup() {
+      const json = JSON.stringify(entries, null, 2);
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'knowledge_backup.json';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+      showToast('已导出 ' + entries.length + ' 个词条', 'success');
+    }
+
+    function parseImportPayload(payload) {
+      if (Array.isArray(payload)) return payload;
+      if (payload && typeof payload === 'object') {
+        if (Array.isArray(payload.items)) return payload.items;
+        if (Array.isArray(payload.entries)) return payload.entries;
+        if (Array.isArray(payload.data)) return payload.data;
+      }
+      return null;
+    }
+
+    async function handleFileSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (!file) return;
+
+      if (file.size > MAX_FILE_SIZE) {
+        showToast('文件超过 4MB，请选择更小的 JSON 备份', 'error');
+        return;
+      }
+
+      try {
+        const text = await file.text();
+        const payload = JSON.parse(text.replace(/^\uFEFF/, ''));
+        const rawList = parseImportPayload(payload);
+        if (!rawList) throw new Error('Unsupported format');
+
+        const normalized = normalizeEntries(rawList);
+        if (!normalized.length) throw new Error('No valid entries');
+
+        pendingImport = { entries: normalized, fileName: file.name };
+        el.importCount.textContent = String(normalized.length);
+        const fileNameNode = el.importFileName.querySelector('span');
+        if (fileNameNode) fileNameNode.textContent = file.name;
+
+        const currentNames = new Set(entries.map((entry) => nameKey(entry.name)));
+        const duplicateCount = normalized.filter((entry) => currentNames.has(nameKey(entry.name))).length;
+        el.importNote.textContent = duplicateCount
+          ? '其中 ' + duplicateCount + ' 个名词与当前知识库同名，合并时会自动跳过。'
+          : '所有词条都是新的，可以放心合并。';
+
+        el.importPreview.replaceChildren();
+        normalized.slice(0, 8).forEach((entry) => {
+          const chip = document.createElement('span');
+          chip.className = 'import-chip';
+          chip.style.setProperty('--chip', entry.color);
+          chip.textContent = entry.name;
+          el.importPreview.appendChild(chip);
+        });
+        if (normalized.length > 8) {
+          const more = document.createElement('span');
+          more.className = 'import-chip more';
+          more.textContent = '+' + (normalized.length - 8);
+          el.importPreview.appendChild(more);
+        }
+
+        openModal(el.importModal, el.mergeImportBtn);
+      } catch (error) {
+        pendingImport = null;
+        showToast('导入失败：请确认文件是知识库导出的 JSON 备份', 'error');
+      }
+    }
+
+    function mergeImport() {
+      if (!pendingImport) return;
+      const existingNames = new Set(entries.map((entry) => nameKey(entry.name)));
+      let added = 0;
+      let skipped = 0;
+
+      pendingImport.entries.forEach((entry) => {
+        if (existingNames.has(nameKey(entry.name))) {
+          skipped += 1;
+          return;
+        }
+        existingNames.add(nameKey(entry.name));
+        entries.push({ ...entry });
+        added += 1;
+      });
+
+      const saved = added ? persist() : true;
+      el.searchInput.value = '';
+      closeModal(el.importModal);
+      applySearch();
+      rebuildBubbles();
+
+      if (!added) {
+        showToast('没有新增词条，已跳过 ' + skipped + ' 个同名项', 'info');
+      } else if (saved) {
+        showToast('已合并 ' + added + ' 个词条' + (skipped ? '，跳过 ' + skipped + ' 个同名项' : ''), 'success');
+      } else {
+        showToast('已合并 ' + added + ' 个词条，但本地保存失败', 'error');
+      }
+    }
+
+    function overwriteImport() {
+      if (!pendingImport) return;
+      entries = pendingImport.entries.map((entry) => ({ ...entry }));
+      const count = entries.length;
+      const saved = persist();
+      el.searchInput.value = '';
+      closeModal(el.importModal);
+      applySearch();
+      rebuildBubbles();
+
+      showToast(
+        saved ? '已覆盖导入 ' + count + ' 个词条' : '已覆盖导入，但本地保存失败',
+        saved ? 'success' : 'error'
+      );
+    }
+
+    /* ============================================================
+       Toast
+       ============================================================ */
+    const TOAST_ICONS = {
+      success: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 6"/></svg>',
+      error: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>',
+      info: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 11v5M12 8h.01"/><circle cx="12" cy="12" r="9"/></svg>'
+    };
+
+    function removeToast(toast) {
+      if (!toast || toast.classList.contains('leaving')) return;
+      toast.classList.remove('show');
+      toast.classList.add('leaving');
+      window.setTimeout(() => toast.remove(), 240);
+    }
+
+    function showToast(message, type = 'success', action = null) {
+      const toast = document.createElement('div');
+      toast.className = 'toast ' + (TOAST_ICONS[type] ? type : 'info');
+
+      const icon = document.createElement('span');
+      icon.className = 'toast-icon';
+      icon.innerHTML = TOAST_ICONS[type] || TOAST_ICONS.info;
+
+      const text = document.createElement('span');
+      text.className = 'toast-message';
+      text.textContent = message;
+
+      toast.appendChild(icon);
+      toast.appendChild(text);
+
+      if (action && action.label) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'toast-action';
+        button.textContent = action.label;
+        button.addEventListener('click', () => {
+          removeToast(toast);
+          if (typeof action.onClick === 'function') action.onClick();
+        });
+        toast.appendChild(button);
+      }
+
+      while (el.toastStack.children.length >= 3) {
+        el.toastStack.firstElementChild.remove();
+      }
+
+      el.toastStack.appendChild(toast);
+      window.requestAnimationFrame(() => toast.classList.add('show'));
+      window.setTimeout(() => removeToast(toast), action ? 6500 : 3400);
+    }
+
+    /* ============================================================
+       事件绑定
+       ============================================================ */
+    function bindEvents() {
+      el.searchInput.addEventListener('input', applySearch);
+
+      el.searchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          if (el.searchInput.value) {
+            clearSearch();
+          } else {
+            el.searchInput.blur();
+          }
+        }
+      });
+
+      el.searchClear.addEventListener('click', clearSearch);
+      el.searchEmptyClear.addEventListener('click', clearSearch);
+
+      el.addBtn.addEventListener('click', openAddForm);
+      el.emptyAddBtn.addEventListener('click', openAddForm);
+      el.resetDataBtn.addEventListener('click', clearLocalData);
+      el.importBtn.addEventListener('click', () => el.fileInput.click());
+      el.exportBtn.addEventListener('click', exportBackup);
+      el.fileInput.addEventListener('change', handleFileSelected);
+
+      el.canvas.addEventListener('pointermove', (event) => {
+        if (event.pointerType === 'touch') return;
+        const rect = el.canvas.getBoundingClientRect();
+        pointer.x = event.clientX - rect.left;
+        pointer.y = event.clientY - rect.top;
+        pointer.active = true;
+        updateHoverNow();
+      });
+
+      el.canvas.addEventListener('pointerleave', () => {
+        pointer.active = false;
+        updateHoverNow();
+      });
+
+      el.canvas.addEventListener('click', (event) => {
+        const rect = el.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const bubble = findBubbleAt(x, y);
+        if (bubble) openDetail(bubble.id);
+      });
+
+      el.detailClose.addEventListener('click', () => closeModal(el.detailModal));
+      el.deleteEntryBtn.addEventListener('click', requestDelete);
+
+      el.formClose.addEventListener('click', () => closeModal(el.formModal));
+      el.formCancel.addEventListener('click', () => closeModal(el.formModal));
+      el.addForm.addEventListener('submit', handleAddSubmit);
+
+      el.nameInput.addEventListener('input', () => {
+        el.nameCount.textContent = Array.from(el.nameInput.value).length + ' / 40';
+        if (el.nameInput.classList.contains('invalid')) {
+          setFieldError(el.nameInput, el.nameError, '');
+        }
+      });
+
+      el.imageInput.addEventListener('input', () => {
+        if (el.imageInput.classList.contains('invalid')) {
+          setFieldError(el.imageInput, el.imageError, '');
+        }
+      });
+
+      el.descInput.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+          event.preventDefault();
+          el.addForm.requestSubmit();
+        }
+      });
+
+      el.importClose.addEventListener('click', () => closeModal(el.importModal));
+      el.importCancel.addEventListener('click', () => closeModal(el.importModal));
+      el.mergeImportBtn.addEventListener('click', mergeImport);
+      el.overwriteImportBtn.addEventListener('click', overwriteImport);
+
+      el.confirmCancel.addEventListener('click', () => closeModal(el.confirmModal));
+      el.confirmDelete.addEventListener('click', confirmDeleteEntry);
+
+      document.querySelectorAll('.modal-layer').forEach((modal) => {
+        modal.addEventListener('click', (event) => {
+          if (event.target === modal) closeModal(modal);
+        });
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Tab' && modalStack.length) {
+          trapFocus(event, modalStack[modalStack.length - 1]);
+          return;
+        }
+
+        if (event.key === 'Escape') {
+          if (modalStack.length) {
+            closeModal(modalStack[modalStack.length - 1]);
+            return;
+          }
+          if (document.activeElement === el.searchInput) {
+            if (el.searchInput.value) {
+              clearSearch();
+            } else {
+              el.searchInput.blur();
+            }
+            return;
+          }
+          if (el.searchInput.value) {
+            clearSearch();
+          }
+          return;
+        }
+
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+          event.preventDefault();
+          el.searchInput.focus();
+          el.searchInput.select();
+          return;
+        }
+
+        const target = event.target;
+        const isTyping = target && (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable
+        );
+
+        if (event.key === '/' && !isTyping && !modalStack.length) {
+          event.preventDefault();
+          el.searchInput.focus();
+        }
+      });
+
+      window.addEventListener('resize', scheduleResize);
+      window.addEventListener('orientationchange', scheduleResize);
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scheduleResize);
+      }
+
+      if (typeof reducedMotionQuery.addEventListener === 'function') {
+        reducedMotionQuery.addEventListener('change', (event) => {
+          reduceMotion = event.matches;
+        });
+      } else if (typeof reducedMotionQuery.addListener === 'function') {
+        reducedMotionQuery.addListener((event) => {
+          reduceMotion = event.matches;
+        });
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        lastFrame = performance.now();
+      });
+    }
+
+    /* ============================================================
+       启动
+       ============================================================ */
+    function init() {
+      const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+      el.searchKbd.textContent = isMac ? '⌘ K' : 'Ctrl K';
+
+      initData();
+      bindEvents();
+      resizeScene();
+      rebuildBubbles({ initial: true });
+      applySearch();
+
+      draw();
+      window.requestAnimationFrame((now) => {
+        lastFrame = now;
+        window.requestAnimationFrame(loop);
+      });
+
+      if (!storageAvailable) {
+        window.setTimeout(() => {
+          showToast('浏览器本地存储不可用，本次修改不会被保存', 'info');
+        }, 900);
+      }
+
+      window.setTimeout(() => {
+        document.fonts && document.fonts.ready && document.fonts.ready.then(() => {
+          bubbles.forEach(layoutBubbleText);
+        });
+      }, 0);
+    }
+
+    init();
+  })();
+  </script>
+</body>
+</html>
